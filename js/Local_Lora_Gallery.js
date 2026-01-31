@@ -1,8 +1,8 @@
 import { app } from "../../scripts/app.js";
 import { api } from "../../scripts/api.js";
 
-const LocalLoraGalleryNode = {
-    name: "LocalLoraGallery",
+const LocalLoraGalleryRemixNode = {
+    name: "LocalLoraGalleryRemix",
     isLoading: false,
     currentPage: 1,
     totalPages: 1,
@@ -10,7 +10,7 @@ const LocalLoraGalleryNode = {
     async getLoras(filter_tag = "", mode = "OR", folder = "", page = 1, selected_loras = [], name_filter = "") {
         this.isLoading = true;
         try {
-            let url = `/localloragallery/get_loras?filter_tag=${encodeURIComponent(filter_tag)}&mode=${mode}&folder=${encodeURIComponent(folder)}&page=${page}&name_filter=${encodeURIComponent(name_filter)}`;
+            let url = `/LocalLoraGalleryRemix/get_loras?filter_tag=${encodeURIComponent(filter_tag)}&mode=${mode}&folder=${encodeURIComponent(folder)}&page=${page}&name_filter=${encodeURIComponent(name_filter)}`;
             selected_loras.forEach(lora => {
                 url += `&selected_loras=${encodeURIComponent(lora)}`;
             });
@@ -20,7 +20,7 @@ const LocalLoraGalleryNode = {
             this.currentPage = data.current_page || 1;
             return data;
         } catch (error) {
-            console.error("LocalLoraGallery: Error fetching LoRAs:", error);
+            console.error("LocalLoraGalleryRemix: Error fetching LoRAs:", error);
             return { loras: [], folders: [], total_pages: 1, current_page: 1 };
         } finally {
             this.isLoading = false;
@@ -30,19 +30,19 @@ const LocalLoraGalleryNode = {
     async updateMetadata(lora_name, data) {
         try {
             const body = { lora_name, ...data };
-            await api.fetchApi("/localloragallery/update_metadata", {
+            await api.fetchApi("/LocalLoraGalleryRemix/update_metadata", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(body),
             });
         } catch(e) {
-            console.error("LocalLoraGallery: Failed to update metadata", e);
+            console.error("LocalLoraGalleryRemix: Failed to update metadata", e);
         }
     },
 
     async setUiState(nodeId, galleryId, state) {
         try {
-            await api.fetchApi("/localloragallery/set_ui_state", {
+            await api.fetchApi("/LocalLoraGalleryRemix/set_ui_state", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ 
@@ -52,7 +52,7 @@ const LocalLoraGalleryNode = {
                 }),
             });
         } catch(e) {
-            console.error("LocalLoraGallery: Failed to set UI state", e);
+            console.error("LocalLoraGalleryRemix: Failed to set UI state", e);
         }
     },
 
@@ -262,6 +262,66 @@ const LocalLoraGalleryNode = {
                         </div>
                         <div class="locallora-gallery"><p>Loading LoRAs...</p></div>
                     </div>
+                    <div id="lora-webui-editor-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center;">
+                        <div style="background:#1a1a1a; width:80%; max-width:800px; max-height:90vh; border-radius:8px; border:1px solid #444; display:flex; flex-direction:column; color:#ddd;">
+                            <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                                <h3 id="modal-lora-name" style="margin:0;">Edit Metadata</h3>
+                                <button id="close-webui-modal" style="background:none; border:none; color:#888; cursor:pointer; font-size:20px;">✖</button>
+                            </div>
+                            
+                            <div style="padding:20px; overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:15px;">
+
+                                <div style="display:flex; gap:10px;">
+                                    <div style="flex:1;">
+                                        <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Stable Diffusion version</label>
+                                        <select id="webui-sd-version" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;">
+                                            <option value="SD1">SD1</option>
+                                            <option value="SD2">SD2</option>
+                                            <option value="SDXL">SDXL</option>
+                                            <option value="Unknown">Unknown</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Activation text</label>
+                                    <input type="text" id="webui-activation-text" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;">
+                                </div>
+
+                                <div>
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Preferred weight</label>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <input type="range" id="webui-preferred-weight" min="0" max="2" step="0.01" style="flex:1;">
+                                        <span id="webui-weight-label">1.0</span>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Negative prompt</label>
+                                    <input type="text" id="webui-negative-text" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;">
+                                </div>
+
+                                <div>
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Download URL</label>
+                                    <input type="text" id="webui-download-url" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;" placeholder="https://...">
+                                </div>
+
+                                <div>
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Training dataset tags</label>
+                                    <div id="webui-tag-display" style="display:flex; flex-wrap:wrap; gap:5px; background:#0e0e0e; padding:10px; border-radius:4px; min-height:40px;"></div>
+                                </div>
+
+                                <div>
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Notes</label>
+                                    <textarea id="webui-notes" rows="4" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;"></textarea>
+                                </div>
+                            </div>
+
+                            <div style="padding:15px; border-top:1px solid #333; display:flex; justify-content:flex-end;">
+                                <button id="webui-save-metadata" style="background:#006699; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Save</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
             
@@ -295,7 +355,7 @@ const LocalLoraGalleryNode = {
                     filter_mode: tagFilterModeBtn.textContent,
                     filter_folder: folderFilterSelect.value
                 };
-                LocalLoraGalleryNode.setUiState(this.id, this.properties.lora_gallery_unique_id, stateToSave);
+                LocalLoraGalleryRemixNode.setUiState(this.id, this.properties.lora_gallery_unique_id, stateToSave);
                 fetchAndRender(false);
             };
 
@@ -320,7 +380,7 @@ const LocalLoraGalleryNode = {
                 const widget = this.widgets.find(w => w.name === "selection_data");
                 if (widget) widget.value = selectionJson;
 
-                LocalLoraGalleryNode.setUiState(this.id, this.properties.lora_gallery_unique_id, { 
+                LocalLoraGalleryRemixNode.setUiState(this.id, this.properties.lora_gallery_unique_id, { 
                     is_collapsed: mainContainer.classList.contains("gallery-collapsed"),
                     lora_stack: serializableData 
                 });
@@ -442,7 +502,7 @@ const LocalLoraGalleryNode = {
                 syncBtn.classList.add('loading');
             
                 try {
-                    const response = await api.fetchApi("/localloragallery/sync_civitai", {
+                    const response = await api.fetchApi("/LocalLoraGalleryRemix/sync_civitai", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ lora_name: loraName }),
@@ -509,7 +569,7 @@ const LocalLoraGalleryNode = {
                     }
             
                 } catch (error) {
-                    console.error("LocalLoraGallery: Failed to sync with Civitai:", error);
+                    console.error("LocalLoraGalleryRemix: Failed to sync with Civitai:", error);
                     syncBtn.textContent = '❌';
                     setTimeout(() => syncBtn.textContent = '☁️', 2000);
                 } finally {
@@ -598,7 +658,7 @@ const LocalLoraGalleryNode = {
                         card.classList.toggle("selected-flow");
                     });
 
-                    const editBtn = card.querySelector(".edit-tags-btn");
+                    /*const editBtn = card.querySelector(".edit-tags-btn");
                     editBtn.addEventListener("click", (e) => {
                         e.stopPropagation();
                     
@@ -624,6 +684,123 @@ const LocalLoraGalleryNode = {
                         }
                     
                         renderMetadataEditor();
+                    });*/
+                    
+                    const editBtn = card.querySelector(".edit-tags-btn");
+                    editBtn.addEventListener("click", (e) => {
+                        e.stopPropagation();
+                        
+                        const loraName = card.dataset.loraName;
+                        const loraInfo = this.availableLoras.find(l => l.name === loraName);
+                        const modal = widgetContainer.querySelector("#lora-webui-editor-modal");
+
+                        modal.querySelector("#modal-lora-name").textContent = `Edit Metadata: ${loraName}`;
+                        const tagDisplay = modal.querySelector("#webui-tag-display");
+                        tagDisplay.innerHTML = "";
+                        (loraInfo?.tags || []).forEach(tag => {
+                            const span = document.createElement("span");
+                            span.className = "tag";
+                            span.textContent = tag;
+                            span.style.cssText = "background: #333; padding: 3px 8px; border-radius: 4px; font-size: 11px; color: #ccc;";
+                            tagDisplay.appendChild(span);
+                        });
+
+                        const sdVersionSelect = modal.querySelector("#webui-sd-version");
+                        sdVersionSelect.value = loraInfo?.sd_version || "Unknown";
+
+                        const activationInput = modal.querySelector("#webui-activation-text");
+                        activationInput.value = loraInfo?.trigger_words || "";
+                        
+                        const weightSlider = modal.querySelector("#webui-preferred-weight");
+                        const weightLabel = modal.querySelector("#webui-weight-label");
+                        const currentWeight = loraInfo?.preferred_weight !== undefined ? loraInfo.preferred_weight : 1.0;
+                        weightSlider.value = currentWeight;
+                        weightLabel.textContent = currentWeight;
+
+                        const negativeInput = modal.querySelector("#webui-negative-text");
+                        negativeInput.value = loraInfo?.negative_prompt || "";
+
+                        const downloadUrlInput = modal.querySelector("#webui-download-url");
+                        downloadUrlInput.value = loraInfo?.download_url || "";
+
+                        const notesInput = modal.querySelector("#webui-notes");
+                        notesInput.value = loraInfo?.notes || "";
+
+                        modal.style.display = "flex";
+
+                        modal.querySelector("#webui-preferred-weight").oninput = (ev) => {
+                            modal.querySelector("#webui-weight-label").textContent = ev.target.value;
+                        };
+
+                        const closeBtn = modal.querySelector("#close-webui-modal");
+                        const closeModal = () => { modal.style.display = "none"; };
+                        closeBtn.onclick = closeModal;
+
+                        const saveBtn = modal.querySelector("#webui-save-metadata");
+                        saveBtn.onclick = async () => {
+                            const originalText = saveBtn.textContent;
+                            saveBtn.textContent = "Saving...";
+                            
+                            const newSdVersion = sdVersionSelect.value;
+                            const newTriggers = activationInput.value.trim();
+                            const newWeight = parseFloat(weightSlider.value);
+                            const newNegative = negativeInput.value.trim();
+                            const newDownloadUrl = downloadUrlInput.value.trim();
+                            const newNotes = notesInput.value;
+
+                            try {
+                                const newData = { 
+                                    sd_version: newSdVersion,
+                                    trigger_words: newTriggers,
+                                    preferred_weight: newWeight,
+                                    negative_prompt: newNegative,
+                                    download_url: newDownloadUrl,
+                                    notes: newNotes
+                                };
+
+                                await LocalLoraGalleryRemixNode.updateMetadata(loraName, newData);
+
+                                if (loraInfo) Object.assign(loraInfo, newData);
+                                
+                                card.dataset.triggerWords = newTriggers;
+                                const triggerDisplayEl = card.querySelector('.lora-card-triggers');
+                                if(triggerDisplayEl) {
+                                    triggerDisplayEl.textContent = newTriggers || 'No triggers';
+                                    triggerDisplayEl.title = newTriggers;
+                                }
+
+                                card.dataset.downloadUrl = newDownloadUrl;
+                                let linkBtn = card.querySelector('.lora-card-link-btn');
+                                if (newDownloadUrl) {
+                                    if (!linkBtn) {
+                                        linkBtn = document.createElement('a');
+                                        linkBtn.className = 'card-btn lora-card-link-btn';
+                                        linkBtn.title = 'Open download page';
+                                        linkBtn.innerHTML = '🔗';
+                                        linkBtn.target = '_blank';
+                                        linkBtn.addEventListener("click", e => e.stopPropagation());
+                                        card.appendChild(linkBtn);
+                                    }
+                                    linkBtn.href = newDownloadUrl;
+                                } else {
+                                    if (linkBtn) linkBtn.remove();
+                                }
+
+                                document.dispatchEvent(new CustomEvent("locallora-metadata-changed", {
+                                    detail: {
+                                        loraName: loraName,
+                                        newData: newData
+                                    }
+                                }));
+
+                                closeModal();
+                            } catch (err) {
+                                console.error("Save failed:", err);
+                                alert("Save failed: " + err.message);
+                            } finally {
+                                saveBtn.textContent = originalText;
+                            }
+                        };
                     });
                 });
             };
@@ -645,7 +822,7 @@ const LocalLoraGalleryNode = {
 
                 const currentSearchTerm = searchInput ? searchInput.value.trim() : "";
 
-                const { loras, folders } = await LocalLoraGalleryNode.getLoras.call(
+                const { loras, folders } = await LocalLoraGalleryRemixNode.getLoras.call(
                     this, 
                     tagFilterInput.value, 
                     tagFilterModeBtn.textContent, 
@@ -674,7 +851,7 @@ const LocalLoraGalleryNode = {
 
             const loadAllTags = async () => {
                 try {
-                    const response = await api.fetchApi("/localloragallery/get_all_tags");
+                    const response = await api.fetchApi("/LocalLoraGalleryRemix/get_all_tags");
                     const data = await response.json();
                     multiSelectTagDropdown.innerHTML = '';
                     if (data.tags) {
@@ -688,7 +865,7 @@ const LocalLoraGalleryNode = {
                             multiSelectTagDropdown.appendChild(label);
                         });
                     }
-                } catch(e) { console.error("LocalLoraGallery: Failed to load all tags:", e); }
+                } catch(e) { console.error("LocalLoraGalleryRemix: Failed to load all tags:", e); }
             };
 
             let foldersRendered = false;
@@ -725,7 +902,7 @@ const LocalLoraGalleryNode = {
                         e.stopPropagation();
                         e.preventDefault();
                         if (confirm(`Are you sure you want to delete preset "${name}"?`)) {
-                            const res = await api.fetchApi("/localloragallery/delete_preset", {
+                            const res = await api.fetchApi("/LocalLoraGalleryRemix/delete_preset", {
                                 method: "POST", headers: { "Content-Type": "application/json" },
                                 body: JSON.stringify({ name }),
                             });
@@ -772,10 +949,10 @@ const LocalLoraGalleryNode = {
             
             const loadPresets = async () => {
                 try {
-                    const res = await api.fetchApi("/localloragallery/get_presets");
+                    const res = await api.fetchApi("/LocalLoraGalleryRemix/get_presets");
                     const presets = await res.json();
                     renderPresets(presets);
-                } catch (e) { console.error("LocalLoraGallery: Failed to load presets", e); }
+                } catch (e) { console.error("LocalLoraGalleryRemix: Failed to load presets", e); }
             };
 
             const renderMetadataEditor = () => {
@@ -804,7 +981,7 @@ const LocalLoraGalleryNode = {
                             const tags = card.dataset.tags ? card.dataset.tags.split(',').filter(Boolean) : [];
                             const newTags = tags.filter(t => t !== tag);
                             
-                            await LocalLoraGalleryNode.updateMetadata(loraName, { tags: newTags });
+                            await LocalLoraGalleryRemixNode.updateMetadata(loraName, { tags: newTags });
 
                             card.dataset.tags = newTags.join(',');
                             const loraInDataSource = this.availableLoras.find(lora => lora.name === loraName);
@@ -859,11 +1036,11 @@ const LocalLoraGalleryNode = {
                     filter_folder: ""
                 };
                 try {
-                    const res = await api.fetchApi(`/localloragallery/get_ui_state?node_id=${this.id}&gallery_id=${this.properties.lora_gallery_unique_id}`);
+                    const res = await api.fetchApi(`/LocalLoraGalleryRemix/get_ui_state?node_id=${this.id}&gallery_id=${this.properties.lora_gallery_unique_id}`);
                     const loadedState = await res.json();
                     initialState = { ...initialState, ...loadedState };
                 } catch(e) { 
-                    console.error("LocalLoraGallery: Failed to get initial UI state.", e); 
+                    console.error("LocalLoraGalleryRemix: Failed to get initial UI state.", e); 
                 }
 
                 if (this.isDeserialized) {
@@ -934,6 +1111,26 @@ const LocalLoraGalleryNode = {
             this.expandedHeight = this.size[1];
 
             const bindEventListeners = () => {
+                document.addEventListener("locallora-metadata-changed", (e) => {
+                    const { loraName, newData } = e.detail;
+                    
+                    const targetLora = this.availableLoras.find(l => l.name === loraName);
+                    if (targetLora) {
+                        Object.assign(targetLora, newData);
+                    }
+
+                    const targetCard = galleryEl.querySelector(`.locallora-lora-card[data-lora-name="${CSS.escape(loraName)}"]`);
+                    if (targetCard) {
+                        targetCard.dataset.triggerWords = newData.trigger_words;
+                        
+                        const triggerEl = targetCard.querySelector('.lora-card-triggers');
+                        if (triggerEl) {
+                            triggerEl.textContent = newData.trigger_words || 'No triggers';
+                            triggerEl.title = newData.trigger_words;
+                        }
+                    }
+                });
+
                 document.addEventListener("keydown", (e) => {
                     if (e.key === "Escape") {
                         if (this.selectedCardsForEditing.size > 0) {
@@ -953,7 +1150,7 @@ const LocalLoraGalleryNode = {
                         const loraName = selectedCard.dataset.loraName;
                         const newUrl = urlEditorInput.value.trim();
 
-                        await LocalLoraGalleryNode.updateMetadata(loraName, { download_url: newUrl });
+                        await LocalLoraGalleryRemixNode.updateMetadata(loraName, { download_url: newUrl });
 
                         selectedCard.dataset.downloadUrl = newUrl;
                         const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
@@ -990,7 +1187,7 @@ const LocalLoraGalleryNode = {
                         const loraName = selectedCard.dataset.loraName;
                         const newTriggers = triggerEditorInput.value.trim();
 
-                        await LocalLoraGalleryNode.updateMetadata(loraName, { trigger_words: newTriggers });
+                        await LocalLoraGalleryRemixNode.updateMetadata(loraName, { trigger_words: newTriggers });
 
                         selectedCard.dataset.triggerWords = newTriggers;
                         const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
@@ -1019,7 +1216,7 @@ const LocalLoraGalleryNode = {
                                 
                                 if (!tags.includes(newTag)) {
                                     tags.push(newTag);
-                                    await LocalLoraGalleryNode.updateMetadata(loraName, { tags: tags });
+                                    await LocalLoraGalleryRemixNode.updateMetadata(loraName, { tags: tags });
                                     card.dataset.tags = tags.join(',');
                                     const loraInDataSource = this.availableLoras.find(lora => lora.name === loraName);
                                     if (loraInDataSource) loraInDataSource.tags = [...tags];
@@ -1073,7 +1270,7 @@ const LocalLoraGalleryNode = {
                 savePresetBtn.addEventListener("click", async () => {
                     const presetName = prompt("Enter a name for this preset:", "");
                     if (presetName && this.loraData.length > 0) {
-                        const res = await api.fetchApi("/localloragallery/save_preset", {
+                        const res = await api.fetchApi("/LocalLoraGalleryRemix/save_preset", {
                             method: "POST", headers: { "Content-Type": "application/json" },
                             body: JSON.stringify({ name: presetName, data: this.loraData }),
                         });
@@ -1103,7 +1300,7 @@ const LocalLoraGalleryNode = {
                         toggleGalleryBtn.textContent = "Hide Gallery";
                     }
                     
-                    LocalLoraGalleryNode.setUiState(this.id, this.properties.lora_gallery_unique_id, { 
+                    LocalLoraGalleryRemixNode.setUiState(this.id, this.properties.lora_gallery_unique_id, { 
                         is_collapsed: isCollapsing,
                         lora_stack: this.loraData.map(({ element, ...rest }) => rest)
                     });
@@ -1202,10 +1399,10 @@ const LocalLoraGalleryNode = {
 };
 
 app.registerExtension({
-    name: "LocalLoraGallery.GalleryUI",
+    name: "LocalLoraGalleryRemix.GalleryUI",
     async beforeRegisterNodeDef(nodeType, nodeData) {
-        if (nodeData.name === "LocalLoraGallery" || nodeData.name === "LocalLoraGalleryModelOnly") {
-            LocalLoraGalleryNode.setup(nodeType, nodeData);
+        if (nodeData.name === "LocalLoraGalleryRemix" || nodeData.name === "LocalLoraGalleryRemixModelOnly") {
+            LocalLoraGalleryRemixNode.setup(nodeType, nodeData);
         }
     },
 });

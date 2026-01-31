@@ -95,7 +95,7 @@ def get_lora_preview_asset_info(lora_name):
             preview_filename = os.path.basename(preview_path)
             encoded_lora_name = urllib.parse.quote_plus(lora_name)
             encoded_filename = urllib.parse.quote_plus(preview_filename)
-            url = f"/localloragallery/preview?filename={encoded_filename}&lora_name={encoded_lora_name}"
+            url = f"/LocalLoraGalleryRemix/preview?filename={encoded_filename}&lora_name={encoded_lora_name}"
             
             preview_type = "none"
             if ext.lower() in VIDEO_EXTENSIONS:
@@ -107,7 +107,7 @@ def get_lora_preview_asset_info(lora_name):
 
     return None, "none"
 
-@server.PromptServer.instance.routes.post("/localloragallery/sync_civitai")
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/sync_civitai")
 async def sync_civitai_metadata(request):
     try:
         data = await request.json()
@@ -230,12 +230,12 @@ async def sync_civitai_metadata(request):
         print(f"Error in sync_civitai_metadata: {traceback.format_exc()}")
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.get("/localloragallery/get_presets")
+@server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/get_presets")
 async def get_presets(request):
     presets = load_presets()
     return web.json_response(presets)
 
-@server.PromptServer.instance.routes.post("/localloragallery/save_preset")
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/save_preset")
 async def save_preset(request):
     try:
         data = await request.json()
@@ -251,7 +251,7 @@ async def save_preset(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.post("/localloragallery/delete_preset")
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/delete_preset")
 async def delete_preset(request):
     try:
         data = await request.json()
@@ -267,7 +267,7 @@ async def delete_preset(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.get("/localloragallery/get_loras")
+@server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/get_loras")
 async def get_loras_endpoint(request):
     try:
         filter_tags_str = request.query.get('filter_tag', '').strip().lower()
@@ -354,6 +354,10 @@ async def get_loras_endpoint(request):
                 "tags": lora_meta.get('tags', []),
                 "trigger_words": lora_meta.get('trigger_words', ''),
                 "download_url": lora_meta.get('download_url', ''),
+                "preferred_weight": lora_meta.get('preferred_weight', 1.0),
+                "negative_prompt": lora_meta.get('negative_prompt', ''),
+                "notes": lora_meta.get('notes', ''),
+                "sd_version": lora_meta.get('sd_version', 'Unknown'),
             })
 
         sorted_folders = sorted(list(all_folders), key=lambda s: s.lower())
@@ -369,7 +373,7 @@ async def get_loras_endpoint(request):
         print(f"Error in get_loras_endpoint: {traceback.format_exc()}")
         return web.json_response({"error": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.get("/localloragallery/preview")
+@server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/preview")
 async def get_preview_image(request):
     filename = request.query.get('filename')
     lora_name = request.query.get('lora_name')
@@ -394,7 +398,7 @@ async def get_preview_image(request):
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.post("/localloragallery/set_ui_state")
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/set_ui_state")
 async def set_ui_state(request):
     try:
         data = await request.json()
@@ -414,7 +418,7 @@ async def set_ui_state(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.get("/localloragallery/get_ui_state")
+@server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/get_ui_state")
 async def get_ui_state(request):
     try:
         node_id = request.query.get('node_id')
@@ -430,14 +434,18 @@ async def get_ui_state(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
-@server.PromptServer.instance.routes.post("/localloragallery/update_metadata")
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/update_metadata")
 async def update_lora_metadata(request):
     try:
         data = await request.json()
         lora_name = data.get("lora_name")
         tags = data.get("tags")
         trigger_words = data.get("trigger_words")
+        preferred_weight = data.get("preferred_weight")
+        negative_prompt = data.get("negative_prompt")
+        notes = data.get("notes")
         download_url = data.get("download_url")
+        sd_version = data.get("sd_version")
 
         if not lora_name:
             return web.json_response({"status": "error", "message": "Missing lora_name"}, status=400)
@@ -455,12 +463,27 @@ async def update_lora_metadata(request):
         if download_url is not None:
             metadata[lora_name]['download_url'] = str(download_url)
 
+        if preferred_weight is not None:
+            try:
+                metadata[lora_name]['preferred_weight'] = float(preferred_weight)
+            except ValueError:
+                pass
+             
+        if negative_prompt is not None:
+            metadata[lora_name]['negative_prompt'] = str(negative_prompt)
+            
+        if notes is not None:
+            metadata[lora_name]['notes'] = str(notes)
+
+        if sd_version is not None:
+            metadata[lora_name]['sd_version'] = str(sd_version)
+
         save_metadata(metadata)
         return web.json_response({"status": "ok"})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
     
-@server.PromptServer.instance.routes.get("/localloragallery/get_all_tags")
+@server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/get_all_tags")
 async def get_all_tags(request):
     try:
         metadata = load_metadata()
@@ -495,7 +518,7 @@ class BaseLoraGallery:
         
         return 'none'
 
-class LocalLoraGallery(BaseLoraGallery):
+class LocalLoraGalleryRemix(BaseLoraGallery):
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -529,16 +552,16 @@ class LocalLoraGallery(BaseLoraGallery):
         
         if nunchaku_model_type == 'flux':
             loader_instance = NunchakuFluxLoraLoader()
-            print("LocalLoraGallery: Using NunchakuFluxLoraLoader.")
+            print("LocalLoraGalleryRemix: Using NunchakuFluxLoraLoader.")
         elif nunchaku_model_type == 'qwen':
             loader_instance = NunchakuQwenLoraLoader()
-            print("LocalLoraGallery: Using NunchakuQwenImageLoraLoader.")
+            print("LocalLoraGalleryRemix: Using NunchakuQwenImageLoraLoader.")
         elif nunchaku_model_type == 'zimage':
             loader_instance = NunchakuZImageLoraLoader()
-            print("LocalLoraGallery: Using NunchakuZImageLoraLoader.")
+            print("LocalLoraGalleryRemix: Using NunchakuZImageLoraLoader.")
         else:
             loader_instance = LoraLoader()
-            print("LocalLoraGallery: Using standard LoraLoader.")
+            print("LocalLoraGalleryRemix: Using standard LoraLoader.")
 
         for config in lora_configs:
             if not config.get('on', True) or not config.get('lora'):
@@ -566,14 +589,14 @@ class LocalLoraGallery(BaseLoraGallery):
 
                 applied_count += 1
             except Exception as e:
-                print(f"LocalLoraGallery: Failed to load LoRA '{lora_name}': {e}")
+                print(f"LocalLoraGalleryRemix: Failed to load LoRA '{lora_name}': {e}")
 
-        print(f"LocalLoraGallery: Applied {applied_count} LoRAs.")
+        print(f"LocalLoraGalleryRemix: Applied {applied_count} LoRAs.")
 
         trigger_words_string = ", ".join(trigger_words_list)
         return (current_model, current_clip, trigger_words_string)
 
-class LocalLoraGalleryModelOnly(BaseLoraGallery):
+class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
     @classmethod
     def INPUT_TYPES(cls):
         return {
@@ -607,16 +630,16 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
 
         if nunchaku_model_type == 'flux':
             loader_instance = NunchakuFluxLoraLoader()
-            print("LocalLoraGalleryModelOnly: Using NunchakuFluxLoraLoader.")
+            print("LocalLoraGalleryRemixModelOnly: Using NunchakuFluxLoraLoader.")
         elif nunchaku_model_type == 'qwen':
             loader_instance = NunchakuQwenLoraLoader()
-            print("LocalLoraGalleryModelOnly: Using NunchakuQwenImageLoraLoader.")
+            print("LocalLoraGalleryRemixModelOnly: Using NunchakuQwenImageLoraLoader.")
         elif nunchaku_model_type == 'zimage':
             loader_instance = NunchakuZImageLoraLoader()
-            print("LocalLoraGalleryModelOnly: Using NunchakuZImageLoraLoader.")
+            print("LocalLoraGalleryRemixModelOnly: Using NunchakuZImageLoraLoader.")
         else:
             loader_instance = LoraLoaderModelOnly()
-            print("LocalLoraGalleryModelOnly: Using standard LoraLoaderModelOnly.")
+            print("LocalLoraGalleryRemixModelOnly: Using standard LoraLoaderModelOnly.")
 
         for config in lora_configs:
             if not config.get('on', True) or not config.get('lora'):
@@ -642,18 +665,18 @@ class LocalLoraGalleryModelOnly(BaseLoraGallery):
 
                 applied_count += 1
             except Exception as e:
-                print(f"LocalLoraGalleryModelOnly: Failed to load LoRA '{lora_name}': {e}")
+                print(f"LocalLoraGalleryRemixModelOnly: Failed to load LoRA '{lora_name}': {e}")
 
-        print(f"LocalLoraGalleryModelOnly: Applied {applied_count} LoRAs.")
+        print(f"LocalLoraGalleryRemixModelOnly: Applied {applied_count} LoRAs.")
 
         trigger_words_string = ", ".join(trigger_words_list)
         return (current_model, trigger_words_string)
 
 NODE_CLASS_MAPPINGS = {
-    "LocalLoraGallery": LocalLoraGallery,
-    "LocalLoraGalleryModelOnly": LocalLoraGalleryModelOnly
+    "LocalLoraGalleryRemix": LocalLoraGalleryRemix,
+    "LocalLoraGalleryRemixModelOnly": LocalLoraGalleryRemixModelOnly
 }
 NODE_DISPLAY_NAME_MAPPINGS = {
-    "LocalLoraGallery": "Local Lora Gallery",
-    "LocalLoraGalleryModelOnly": "Local Lora Gallery (Model Only)"
+    "LocalLoraGalleryRemix": "Local Lora Gallery",
+    "LocalLoraGalleryRemixModelOnly": "Local Lora Gallery (Model Only)"
 }
