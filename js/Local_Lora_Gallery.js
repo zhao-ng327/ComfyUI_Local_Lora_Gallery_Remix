@@ -649,14 +649,19 @@ const LocalLoraGalleryRemixNode = {
                         const existingIndex = this.loraData.findIndex(item => item.lora === loraName);
                         if (existingIndex > -1) {
                             this.loraData.splice(existingIndex, 1);
+                            card.classList.remove("selected-flow");
                         } else {
-                            this.loraData.push({ on: true, lora: loraName, strength: 1.0, strength_clip: 1.0, use_trigger: true });
+                            const loraInfo = this.availableLoras.find(l => l.name === loraName);
+                            const defaultWeight = (loraInfo && loraInfo['preferred weight'] !== undefined) 
+                                                  ? loraInfo['preferred weight'] 
+                                                  : 1.0;
+                            this.loraData.push({ on: true, lora: loraName, strength: defaultWeight, strength_clip: defaultWeight, use_trigger: true });
+
+                            card.classList.add("selected-flow");
                         }
                         renderSelectedList();
                         updateSelection();
                         updatePresetButtonText(null);
-                        
-                        card.classList.toggle("selected-flow");
                     });
 
                     /*const editBtn = card.querySelector(".edit-tags-btn");

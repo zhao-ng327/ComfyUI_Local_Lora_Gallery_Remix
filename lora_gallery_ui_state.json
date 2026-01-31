@@ -2,5 +2,54 @@
     "lora-gallery-cgyadqe9b_12": {
         "is_collapsed": false,
         "lora_stack": []
+    },
+    "lora-gallery-lo9746x9p_24": {
+        "is_collapsed": false,
+        "lora_stack": []
+    },
+    "lora-gallery-utjbo9u0b_23": {
+        "is_collapsed": false,
+        "lora_stack": [
+            {
+                "on": true,
+                "lora": "chara\\aoharu.safetensors",
+                "strength": 0,
+                "strength_clip": 0,
+                "use_trigger": true
+            },
+            {
+                "on": false,
+                "lora": "chara\\SashaNecron.safetensors",
+                "strength": 0,
+                "strength_clip": 0,
+                "use_trigger": true
+            },
+            {
+                "on": false,
+                "lora": "style\\smile1312.safetensors",
+                "strength": 1,
+                "strength_clip": 1,
+                "use_trigger": true
+            }
+        ]
+    },
+    "lora-gallery-qpzxz2ser_31": {
+        "is_collapsed": false,
+        "lora_stack": [
+            {
+                "on": false,
+                "lora": "style\\smile1312.safetensors",
+                "strength": 1,
+                "strength_clip": 1,
+                "use_trigger": true
+            },
+            {
+                "on": true,
+                "lora": "chara\\ZZZ\\c_phoebe (wuthering waves)_nbe11_xl.safetensors",
+                "strength": 1,
+                "strength_clip": 1,
+                "use_trigger": true
+            }
+        ]
     }
 }

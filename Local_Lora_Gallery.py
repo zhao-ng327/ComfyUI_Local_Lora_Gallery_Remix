@@ -39,7 +39,7 @@ except Exception as e:
     print(f"INFO: Local Lora Gallery - Nunchaku nodes not found or failed to load. Running in standard mode. Error: {e}")
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
-#METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
+LEGACY_METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
 UI_STATE_FILE = os.path.join(NODE_DIR, "lora_gallery_ui_state.json")
 PRESETS_FILE = os.path.join(NODE_DIR, "lora_gallery_presets.json")
 VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.avi']
@@ -107,6 +107,62 @@ def save_lora_metadata(lora_name, new_data, merge=True):
     current_data.update(new_data)
     save_json_file(current_data, json_path)
     return True
+
+def migrate_legacy_metadata():
+    if not os.path.exists(LEGACY_METADATA_FILE):
+        return
+    
+    try:
+        legacy_data = load_json_file(LEGACY_METADATA_FILE)
+    except Exception as e:
+        print(f"❌ Error loading legacy metadata: {e}")
+        return
+
+    migrated_count = 0
+    
+    key_map = {
+        "trigger_words": "activation text",
+        "preferred_weight": "preferred weight",
+        "negative_prompt": "negative text",
+        "sd_version": "sd version"
+    }
+
+    for lora_name, old_meta in legacy_data.items():
+        lora_full_path = folder_paths.get_full_path("loras", lora_name)
+        
+        if not lora_full_path or not os.path.exists(lora_full_path):
+            continue
+            
+        base_name, _ = os.path.splitext(lora_full_path)
+        json_path = base_name + ".json"
+        
+        current_sidecar_data = {}
+        if os.path.exists(json_path):
+            current_sidecar_data = load_json_file(json_path)
+        
+        data_to_save = current_sidecar_data.copy()
+        is_modified = False
+
+        for old_key, val in old_meta.items():
+            new_key = key_map.get(old_key, old_key)
+            
+            if new_key not in current_sidecar_data:
+                if val is not None and val != "":
+                    if new_key == "tags" and not isinstance(val, list):
+                        continue
+                    
+                    data_to_save[new_key] = val
+                    is_modified = True
+        
+        if is_modified:
+            save_json_file(data_to_save, json_path)
+            migrated_count += 1
+
+    try:
+        backup_path = LEGACY_METADATA_FILE + ".migrated"
+        os.rename(LEGACY_METADATA_FILE, backup_path)
+    except Exception as e:
+        print(f"⚠️ Migration finished but failed to rename legacy file: {e}")
 
 load_ui_state = lambda: load_json_file(UI_STATE_FILE)
 save_ui_state = lambda data: save_json_file(data, UI_STATE_FILE)
@@ -620,8 +676,8 @@ class LocalLoraGalleryRemix(BaseLoraGallery):
             }
         }
 
-    RETURN_TYPES = ("MODEL", "CLIP", "STRING")
-    RETURN_NAMES = ("MODEL", "CLIP", "trigger_words")
+    RETURN_TYPES = ("MODEL", "CLIP", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "CLIP", "trigger_words", "negative_trigger_words")
 
     FUNCTION = "load_loras"
     CATEGORY = "📜Asset Gallery/Loras"
@@ -634,6 +690,7 @@ class LocalLoraGalleryRemix(BaseLoraGallery):
 
         #all_metadata = load_metadata()
         trigger_words_list = []
+        negative_trigger_words_list = []
 
         current_model, current_clip = model, clip
         applied_count = 0
@@ -666,6 +723,10 @@ class LocalLoraGalleryRemix(BaseLoraGallery):
                 triggers = lora_meta.get('activation text', '').strip()
                 if triggers:
                     trigger_words_list.append(triggers)
+                
+                neg_triggers = lora_meta.get('negative text', '').strip()
+                if neg_triggers:
+                    negative_trigger_words_list.append(neg_triggers)
 
             try:
                 strength_model = float(config.get('strength', 1.0))
@@ -686,7 +747,9 @@ class LocalLoraGalleryRemix(BaseLoraGallery):
         print(f"LocalLoraGalleryRemix: Applied {applied_count} LoRAs.")
 
         trigger_words_string = ", ".join(trigger_words_list)
-        return (current_model, current_clip, trigger_words_string)
+        negative_trigger_words_string = ", ".join(negative_trigger_words_list)
+
+        return (current_model, current_clip, trigger_words_string, negative_trigger_words_string)
 
 class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
     @classmethod
@@ -699,8 +762,8 @@ class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
             }
         }
 
-    RETURN_TYPES = ("MODEL", "STRING")
-    RETURN_NAMES = ("MODEL", "trigger_words")
+    RETURN_TYPES = ("MODEL", "STRING", "STRING")
+    RETURN_NAMES = ("MODEL", "trigger_words", "negative_trigger_words")
 
     FUNCTION = "load_loras"
     CATEGORY = "📜Asset Gallery/Loras"
@@ -713,6 +776,7 @@ class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
 
         #all_metadata = load_metadata()
         trigger_words_list = []
+        negative_trigger_words_list = []
 
         current_model = model
         applied_count = 0
@@ -746,6 +810,10 @@ class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
                 if triggers:
                     trigger_words_list.append(triggers)
 
+                neg_triggers = lora_meta.get('negative text', '').strip()
+                if neg_triggers:
+                    negative_trigger_words_list.append(neg_triggers)
+
             try:
                 strength_model = float(config.get('strength', 1.0))
                 if strength_model == 0:
@@ -763,7 +831,10 @@ class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
         print(f"LocalLoraGalleryRemixModelOnly: Applied {applied_count} LoRAs.")
 
         trigger_words_string = ", ".join(trigger_words_list)
-        return (current_model, trigger_words_string)
+        negative_trigger_words_string = ", ".join(negative_trigger_words_list)
+        return (current_model, trigger_words_string, negative_trigger_words_string)
+
+migrate_legacy_metadata()
 
 NODE_CLASS_MAPPINGS = {
     "LocalLoraGalleryRemix": LocalLoraGalleryRemix,
