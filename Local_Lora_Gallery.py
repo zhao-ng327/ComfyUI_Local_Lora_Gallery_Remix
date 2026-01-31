@@ -39,7 +39,7 @@ except Exception as e:
     print(f"INFO: Local Lora Gallery - Nunchaku nodes not found or failed to load. Running in standard mode. Error: {e}")
 
 NODE_DIR = os.path.dirname(os.path.abspath(__file__))
-METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
+#METADATA_FILE = os.path.join(NODE_DIR, "lora_gallery_metadata.json")
 UI_STATE_FILE = os.path.join(NODE_DIR, "lora_gallery_ui_state.json")
 PRESETS_FILE = os.path.join(NODE_DIR, "lora_gallery_presets.json")
 VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.avi']
@@ -75,8 +75,39 @@ def save_json_file(data, file_path):
     except Exception as e:
         print(f"Error saving {file_path}: {e}")
 
-load_metadata = lambda: load_json_file(METADATA_FILE)
-save_metadata = lambda data: save_json_file(data, METADATA_FILE)
+#load_metadata = lambda: load_json_file(METADATA_FILE)
+#save_metadata = lambda data: save_json_file(data, METADATA_FILE)
+def get_lora_json_path(lora_name):
+    try:
+        lora_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_path:
+            return None
+        base_name, _ = os.path.splitext(lora_path)
+        return base_name + ".json"
+    except Exception as e:
+        print(f"Error resolving json path for {lora_name}: {e}")
+        return None
+
+def load_lora_metadata(lora_name):
+    json_path = get_lora_json_path(lora_name)
+    if json_path and os.path.exists(json_path):
+        return load_json_file(json_path)
+    return {}
+
+def save_lora_metadata(lora_name, new_data, merge=True):
+    json_path = get_lora_json_path(lora_name)
+    if not json_path:
+        print(f"Could not determine JSON path for {lora_name}")
+        return False
+    
+    current_data = {}
+    if merge and os.path.exists(json_path):
+        current_data = load_json_file(json_path)
+    
+    current_data.update(new_data)
+    save_json_file(current_data, json_path)
+    return True
+
 load_ui_state = lambda: load_json_file(UI_STATE_FILE)
 save_ui_state = lambda data: save_json_file(data, UI_STATE_FILE)
 load_presets = lambda: load_json_file(PRESETS_FILE)
@@ -119,8 +150,9 @@ async def sync_civitai_metadata(request):
         if not lora_full_path:
             return web.json_response({"status": "error", "message": "LoRA file not found"}, status=404)
 
-        metadata = load_metadata()
-        lora_meta = metadata.get(lora_name, {})
+        #metadata = load_metadata()
+        #lora_meta = metadata.get(lora_name, {})
+        lora_meta = load_lora_metadata(lora_name)
         
         model_hash = lora_meta.get('hash')
         if not model_hash:
@@ -205,7 +237,7 @@ async def sync_civitai_metadata(request):
 
             trained_words = civitai_version_data.get('trainedWords', [])
             if trained_words:
-                lora_meta['trigger_words'] = ", ".join(trained_words)
+                lora_meta['activation text'] = ", ".join(trained_words)
             
             lora_meta['download_url'] = f"https://civitai.com/models/{model_id}"
 
@@ -215,8 +247,9 @@ async def sync_civitai_metadata(request):
             #         tags.add(tag)
             # lora_meta['tags'] = sorted(list(tags))
             
-            metadata[lora_name] = lora_meta
-            save_metadata(metadata)
+            #metadata[lora_name] = lora_meta
+            #save_metadata(metadata)
+            save_lora_metadata(lora_name, lora_meta)
             
             new_local_url, new_preview_type = get_lora_preview_asset_info(lora_name)
             
@@ -282,7 +315,7 @@ async def get_loras_endpoint(request):
 
         lora_files = folder_paths.get_filename_list("loras")
         lora_roots = folder_paths.get_folder_paths("loras")
-        metadata = load_metadata()
+        #metadata = load_metadata()
         all_folders = set()
 
         filtered_loras = []
@@ -310,7 +343,8 @@ async def get_loras_endpoint(request):
             if filter_folder and filter_folder != folder:
                 continue
 
-            lora_meta = metadata.get(lora, {})
+            #lora_meta = metadata.get(lora, {})
+            lora_meta = load_lora_metadata(lora)
             tags = [t.lower() for t in lora_meta.get('tags', [])]
 
             if filter_tags:
@@ -344,20 +378,21 @@ async def get_loras_endpoint(request):
 
         lora_info_list = []
         for lora in paginated_loras:
-            lora_meta = metadata.get(lora, {})
+            #lora_meta = metadata.get(lora, {})
+            lora_meta = load_lora_metadata(lora) 
             preview_url, preview_type = get_lora_preview_asset_info(lora)
-            
+
             lora_info_list.append({
                 "name": lora,
                 "preview_url": preview_url or "",
                 "preview_type": preview_type,
                 "tags": lora_meta.get('tags', []),
-                "trigger_words": lora_meta.get('trigger_words', ''),
                 "download_url": lora_meta.get('download_url', ''),
-                "preferred_weight": lora_meta.get('preferred_weight', 1.0),
-                "negative_prompt": lora_meta.get('negative_prompt', ''),
+                "activation text": lora_meta.get('activation text', ''),
+                "preferred weight": lora_meta.get('preferred weight', 1.0),
+                "negative text": lora_meta.get('negative text', ''),
+                "sd version": lora_meta.get('sd version', 'Unknown'),
                 "notes": lora_meta.get('notes', ''),
-                "sd_version": lora_meta.get('sd_version', 'Unknown'),
             })
 
         sorted_folders = sorted(list(all_folders), key=lambda s: s.lower())
@@ -434,6 +469,7 @@ async def get_ui_state(request):
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
+'''
 @server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/update_metadata")
 async def update_lora_metadata(request):
     try:
@@ -482,12 +518,67 @@ async def update_lora_metadata(request):
         return web.json_response({"status": "ok"})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
+'''
+
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/update_metadata")
+async def update_lora_metadata(request):
+    try:
+        data = await request.json()
+        lora_name = data.get("lora_name")
+        
+        update_data = {}
+        fields = ["tags", "activation text", "download_url", "preferred weight", "negative text", "notes", "sd version"]
+        
+        for field in fields:
+            val = data.get(field)
+            if val is not None:
+                if field == "tags":
+                    update_data[field] = [str(tag).strip() for tag in val if str(tag).strip()]
+                elif field == "preferred weight":
+                    try:
+                        update_data[field] = float(val)
+                    except:
+                        pass
+                else:
+                    update_data[field] = str(val)
+
+        if not lora_name:
+            return web.json_response({"status": "error", "message": "Missing lora_name"}, status=400)
+        
+        success = save_lora_metadata(lora_name, update_data, merge=True)
+        
+        if success:
+            return web.json_response({"status": "ok"})
+        else:
+            return web.json_response({"status": "error", "message": "Failed to resolve file path"}, status=500)
+
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
     
+'''
 @server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/get_all_tags")
 async def get_all_tags(request):
     try:
         metadata = load_metadata()
         all_tags = set(tag for item_meta in metadata.values() if isinstance(item_meta.get("tags"), list) for tag in item_meta["tags"])
+        return web.json_response({"tags": sorted(list(all_tags), key=lambda s: s.lower())})
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+'''
+
+@server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/get_all_tags")
+async def get_all_tags(request):
+    try:
+        lora_files = folder_paths.get_filename_list("loras")
+        all_tags = set()
+        
+        for lora in lora_files:
+            meta = load_lora_metadata(lora)
+            tags = meta.get("tags", [])
+            if isinstance(tags, list):
+                for tag in tags:
+                    all_tags.add(tag)
+
         return web.json_response({"tags": sorted(list(all_tags), key=lambda s: s.lower())})
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
@@ -541,7 +632,7 @@ class LocalLoraGalleryRemix(BaseLoraGallery):
         except:
             lora_configs = []
 
-        all_metadata = load_metadata()
+        #all_metadata = load_metadata()
         trigger_words_list = []
 
         current_model, current_clip = model, clip
@@ -570,8 +661,9 @@ class LocalLoraGalleryRemix(BaseLoraGallery):
             lora_name = config['lora']
 
             if config.get('use_trigger', True):
-                lora_meta = all_metadata.get(lora_name, {})
-                triggers = lora_meta.get('trigger_words', '').strip()
+                #lora_meta = all_metadata.get(lora_name, {})
+                lora_meta = load_lora_metadata(lora_name)
+                triggers = lora_meta.get('activation text', '').strip()
                 if triggers:
                     trigger_words_list.append(triggers)
 
@@ -619,7 +711,7 @@ class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
         except:
             lora_configs = []
 
-        all_metadata = load_metadata()
+        #all_metadata = load_metadata()
         trigger_words_list = []
 
         current_model = model
@@ -648,8 +740,9 @@ class LocalLoraGalleryRemixModelOnly(BaseLoraGallery):
             lora_name = config['lora']
 
             if config.get('use_trigger', True):
-                lora_meta = all_metadata.get(lora_name, {})
-                triggers = lora_meta.get('trigger_words', '').strip()
+                #lora_meta = all_metadata.get(lora_name, {})
+                lora_meta = load_lora_metadata(lora_name)
+                triggers = lora_meta.get('activation text', '').strip()
                 if triggers:
                     trigger_words_list.append(triggers)
 

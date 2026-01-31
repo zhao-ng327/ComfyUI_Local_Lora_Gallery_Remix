@@ -516,13 +516,14 @@ const LocalLoraGalleryRemixNode = {
                     const result = await response.json();
             
                     if (result.status === 'ok' && result.metadata) {
-                        const { preview_url, preview_type, trigger_words, download_url, tags } = result.metadata;
+                        const { preview_url, preview_type, download_url, tags } = result.metadata;
+                        const activationText = result.metadata["activation text"];
                         
                         const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
                         if (loraInDataSource) {
                             loraInDataSource.preview_url = preview_url || '';
                             loraInDataSource.preview_type = preview_type || 'none';
-                            loraInDataSource.trigger_words = trigger_words || '';
+                            loraInDataSource["activation text"] = activationText || '';
                             loraInDataSource.download_url = download_url || '';
                             loraInDataSource.tags = tags || [];
                         }
@@ -542,10 +543,10 @@ const LocalLoraGalleryRemixNode = {
 
                         const triggerEl = card.querySelector('.lora-card-triggers');
                         if(triggerEl) {
-                           triggerEl.textContent = trigger_words || 'No triggers';
-                           triggerEl.title = trigger_words || '';
+                           triggerEl.textContent = activationText || 'No triggers';
+                           triggerEl.title = activationText || '';
                         }
-                        card.dataset.triggerWords = trigger_words || '';
+                        card.dataset.activationText = activationText || '';
                         card.dataset.downloadUrl = download_url || '';
                         card.dataset.tags = (tags || []).join(',');
                         
@@ -591,7 +592,7 @@ const LocalLoraGalleryRemixNode = {
                     card.className = "locallora-lora-card";
                     card.dataset.loraName = lora.name;
                     card.dataset.tags = lora.tags.join(',');
-                    card.dataset.triggerWords = lora.trigger_words;
+                    card.dataset.activationText = lora["activation text"];
                     card.dataset.downloadUrl = lora.download_url;
                     card.title = lora.name;
 
@@ -613,7 +614,7 @@ const LocalLoraGalleryRemixNode = {
                         <div class="locallora-media-container">${mediaHTML}</div>
                         <div class="locallora-lora-card-info">
                             <p>${lora.name}</p>
-                            <div class="lora-card-triggers" title="${lora.trigger_words}">${lora.trigger_words || 'No triggers'}</div>
+                            <div class="lora-card-triggers" title="${lora['activation text']}">${lora['activation text'] || 'No triggers'}</div>
                             <div class="lora-card-tags"></div>
                         </div>
                         <div class="card-btn edit-tags-btn">✏️</div>
@@ -706,19 +707,19 @@ const LocalLoraGalleryRemixNode = {
                         });
 
                         const sdVersionSelect = modal.querySelector("#webui-sd-version");
-                        sdVersionSelect.value = loraInfo?.sd_version || "Unknown";
+                        sdVersionSelect.value = loraInfo?.['sd version'] || "Unknown";
 
                         const activationInput = modal.querySelector("#webui-activation-text");
-                        activationInput.value = loraInfo?.trigger_words || "";
+                        activationInput.value = loraInfo?.['activation text'] || "";
                         
                         const weightSlider = modal.querySelector("#webui-preferred-weight");
                         const weightLabel = modal.querySelector("#webui-weight-label");
-                        const currentWeight = loraInfo?.preferred_weight !== undefined ? loraInfo.preferred_weight : 1.0;
+                        const currentWeight = loraInfo?.['preferred weight'] !== undefined ? loraInfo['preferred weight'] : 1.0;
                         weightSlider.value = currentWeight;
                         weightLabel.textContent = currentWeight;
 
                         const negativeInput = modal.querySelector("#webui-negative-text");
-                        negativeInput.value = loraInfo?.negative_prompt || "";
+                        negativeInput.value = loraInfo?.['negative text'] || "";
 
                         const downloadUrlInput = modal.querySelector("#webui-download-url");
                         downloadUrlInput.value = loraInfo?.download_url || "";
@@ -742,7 +743,7 @@ const LocalLoraGalleryRemixNode = {
                             saveBtn.textContent = "Saving...";
                             
                             const newSdVersion = sdVersionSelect.value;
-                            const newTriggers = activationInput.value.trim();
+                            const newActivationText = activationInput.value.trim();
                             const newWeight = parseFloat(weightSlider.value);
                             const newNegative = negativeInput.value.trim();
                             const newDownloadUrl = downloadUrlInput.value.trim();
@@ -750,23 +751,23 @@ const LocalLoraGalleryRemixNode = {
 
                             try {
                                 const newData = { 
-                                    sd_version: newSdVersion,
-                                    trigger_words: newTriggers,
-                                    preferred_weight: newWeight,
-                                    negative_prompt: newNegative,
-                                    download_url: newDownloadUrl,
-                                    notes: newNotes
+                                    "activation text": newActivationText,
+                                    "preferred weight": newWeight,
+                                    "negative text": newNegative,
+                                    "sd version": newSdVersion,
+                                    "notes": newNotes,
+                                    "download_url": newDownloadUrl // 這個保持不變
                                 };
 
                                 await LocalLoraGalleryRemixNode.updateMetadata(loraName, newData);
 
                                 if (loraInfo) Object.assign(loraInfo, newData);
                                 
-                                card.dataset.triggerWords = newTriggers;
+                                card.dataset.activationText = newActivationText; 
                                 const triggerDisplayEl = card.querySelector('.lora-card-triggers');
                                 if(triggerDisplayEl) {
-                                    triggerDisplayEl.textContent = newTriggers || 'No triggers';
-                                    triggerDisplayEl.title = newTriggers;
+                                    triggerDisplayEl.textContent = newActivationText || 'No triggers';
+                                    triggerDisplayEl.title = newActivationText;
                                 }
 
                                 card.dataset.downloadUrl = newDownloadUrl;
@@ -998,7 +999,7 @@ const LocalLoraGalleryRemixNode = {
 
                 if (this.selectedCardsForEditing.size === 1) {
                     const selectedCard = Array.from(this.selectedCardsForEditing)[0];
-                    triggerEditorInput.value = selectedCard.dataset.triggerWords || "";
+                    triggerEditorInput.value = selectedCard.dataset.activationText || "";
                     triggerEditorRow.style.display = "flex";
                     urlEditorInput.value = selectedCard.dataset.downloadUrl || "";
                     urlEditorRow.style.display = "flex";
@@ -1121,12 +1122,12 @@ const LocalLoraGalleryRemixNode = {
 
                     const targetCard = galleryEl.querySelector(`.locallora-lora-card[data-lora-name="${CSS.escape(loraName)}"]`);
                     if (targetCard) {
-                        targetCard.dataset.triggerWords = newData.trigger_words;
+                        targetCard.dataset.activationText = newData['activation text'];
                         
                         const triggerEl = targetCard.querySelector('.lora-card-triggers');
                         if (triggerEl) {
-                            triggerEl.textContent = newData.trigger_words || 'No triggers';
-                            triggerEl.title = newData.trigger_words;
+                            triggerEl.textContent = newData['activation text'] || 'No triggers';
+                            triggerEl.title = newData['activation text'];
                         }
                     }
                 });
@@ -1187,11 +1188,11 @@ const LocalLoraGalleryRemixNode = {
                         const loraName = selectedCard.dataset.loraName;
                         const newTriggers = triggerEditorInput.value.trim();
 
-                        await LocalLoraGalleryRemixNode.updateMetadata(loraName, { trigger_words: newTriggers });
+                        await LocalLoraGalleryRemixNode.updateMetadata(loraName, { "activation text": newTriggers });
 
-                        selectedCard.dataset.triggerWords = newTriggers;
+                        selectedCard.dataset.activationText = newTriggers;
                         const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
-                        if (loraInDataSource) loraInDataSource.trigger_words = newTriggers;
+                        if (loraInDataSource) loraInDataSource["activation text"] = newTriggers;
                         
                         const triggerDisplayEl = selectedCard.querySelector('.lora-card-triggers');
                         if(triggerDisplayEl) {
