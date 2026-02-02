@@ -331,6 +331,32 @@ const LocalLoraGalleryRemixNode = {
                             </div>
                         </div>
                     </div>
+
+                    <div id="lora-info-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10001; justify-content:center; align-items:center;">
+                        <div style="background:#1a1a1a; width:70%; max-width:900px; max-height:85vh; border-radius:8px; border:1px solid #444; display:flex; flex-direction:column; color:#ddd; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                            <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                                <h3 id="info-modal-title" style="margin:0; font-size:16px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Training Metadata</h3>
+                                <button id="close-info-modal" style="background:none; border:none; color:#888; cursor:pointer; font-size:20px;">✖</button>
+                            </div>
+                            
+                            <div class="info-modal-content" style="padding:0; overflow-y:auto; flex:1;">
+                                <table style="width:100%; border-collapse: collapse; font-size:12px;">
+                                    <thead>
+                                        <tr style="background:#222; text-align:left;">
+                                            <th style="padding:10px; border-bottom:1px solid #444; width:30%;">Key</th>
+                                            <th style="padding:10px; border-bottom:1px solid #444;">Value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="info-table-body">
+                                        </tbody>
+                                </table>
+                            </div>
+                            
+                            <div style="padding:10px; border-top:1px solid #333; text-align:right;">
+                                <button id="copy-info-json" style="background:#333; color:#ccc; border:1px solid #555; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:12px;">📋 Copy JSON</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             `;
             
@@ -662,9 +688,6 @@ const LocalLoraGalleryRemixNode = {
                         e.stopPropagation();
                         syncWithCivitai(lora.name, card);
                     });*/
-                    card.querySelector(".info-btn").addEventListener("click", e => {
-                        e.stopPropagation();
-                    });
 
                     if (this.loraData.some(item => item.lora === lora.name)) card.classList.add("selected-flow");
                     if (this.selectedCardsForEditing.has(card)) card.classList.add("selected-edit");
@@ -726,6 +749,78 @@ const LocalLoraGalleryRemixNode = {
                     
                         renderMetadataEditor();
                     });*/
+
+                    const infoBtn = card.querySelector(".info-btn");
+                    infoBtn.addEventListener("click", async (e) => {
+                        e.stopPropagation();
+                        
+                        const loraName = card.dataset.loraName;
+                        const infoModal = widgetContainer.querySelector("#lora-info-modal");
+                        const infoTitle = infoModal.querySelector("#info-modal-title");
+                        const tableBody = infoModal.querySelector("#info-table-body");
+                        const copyBtn = infoModal.querySelector("#copy-info-json");
+
+                        infoTitle.textContent = `Metadata: ${loraName}`;
+                        tableBody.innerHTML = `<tr><td colspan="2" style="padding:20px; text-align:center; color:#888;">Loading training parameters...</td></tr>`;
+                        infoModal.style.display = "flex";
+
+                        try {
+                            const response = await api.fetchApi("/LocalLoraGalleryRemix/get_lora_training_info", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ lora_name: loraName }),
+                            });
+                            
+                            const result = await response.json();
+                            
+                            if (result.status === "ok" && result.metadata) {
+                                tableBody.innerHTML = "";
+                                const meta = result.metadata;
+                                const keys = Object.keys(meta).sort();
+
+                                if (keys.length === 0) {
+                                    tableBody.innerHTML = `<tr><td colspan="2" style="padding:20px; text-align:center;">No metadata found inside the file.</td></tr>`;
+                                } else {
+                                    keys.forEach(key => {
+                                        let value = meta[key];
+                                        
+                                        try {
+                                            if (typeof value === 'string' && (value.startsWith('{') || value.startsWith('['))) {
+                                                const parsed = JSON.parse(value);
+                                                value = `<pre style="margin:0; white-space:pre-wrap; font-family:monospace; color:#aaa;">${JSON.stringify(parsed, null, 2)}</pre>`;
+                                            }
+                                        } catch(e) {}
+
+                                        const tr = document.createElement("tr");
+                                        tr.style.borderBottom = "1px solid #333";
+                                        tr.innerHTML = `
+                                            <td style="padding:8px 10px; vertical-align:top; color:#4a90e2; font-family:monospace; word-break:break-all; width:30%;">${key}</td>
+                                            <td style="padding:8px 10px; vertical-align:top; color:#ccc; word-break:break-word;">${value}</td>
+                                        `;
+                                        tableBody.appendChild(tr);
+                                    });
+                                }
+                                
+                                copyBtn.onclick = () => {
+                                    navigator.clipboard.writeText(JSON.stringify(meta, null, 4));
+                                    const originalText = copyBtn.textContent;
+                                    copyBtn.textContent = "✅ Copied!";
+                                    setTimeout(() => copyBtn.textContent = originalText, 2000);
+                                };
+                            } else {
+                                throw new Error(result.message || "Unknown error");
+                            }
+                        } catch (err) {
+                            tableBody.innerHTML = `<tr><td colspan="2" style="padding:20px; text-align:center; color:#ff6666;">Error loading metadata: ${err.message}</td></tr>`;
+                        }
+                        
+                        const closeInfoBtn = infoModal.querySelector("#close-info-modal");
+                        const closeModal = () => { infoModal.style.display = "none"; };
+                        closeInfoBtn.onclick = closeModal;
+                        infoModal.onclick = (ev) => {
+                           if (ev.target === infoModal) closeModal();
+                        };
+                    });
                     
                     const editBtn = card.querySelector(".edit-tags-btn");
                     editBtn.addEventListener("click", (e) => {

@@ -8,6 +8,7 @@ import urllib.parse
 import hashlib
 import aiohttp
 import asyncio
+from safetensors import safe_open
 from urllib.parse import urlparse
 
 NunchakuFluxLoraLoader = None
@@ -595,6 +596,41 @@ async def update_lora_metadata(request):
             return web.json_response({"status": "ok"})
         else:
             return web.json_response({"status": "error", "message": "Failed to resolve file path"}, status=500)
+
+    except Exception as e:
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/get_lora_training_info")
+async def get_lora_training_info(request):
+    try:
+        data = await request.json()
+        lora_name = data.get("lora_name")
+        
+        if not lora_name:
+            return web.json_response({"status": "error", "message": "Missing lora_name"}, status=400)
+
+        lora_full_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_full_path or not os.path.exists(lora_full_path):
+            return web.json_response({"status": "error", "message": "LoRA file not found"}, status=404)
+
+        if not lora_full_path.endswith(".safetensors"):
+             return web.json_response({
+                 "status": "ok", 
+                 "metadata": {"Info": "Metadata reading is only supported for .safetensors files."}
+             })
+
+        metadata = {}
+        try:
+            with safe_open(lora_full_path, framework="pt", device="cpu") as f:
+                metadata = f.metadata()
+        except Exception as e:
+            print(f"Error reading safetensors metadata: {e}")
+            return web.json_response({"status": "error", "message": f"Failed to read metadata: {str(e)}"}, status=500)
+        
+        if metadata is None:
+            metadata = {"Info": "No metadata found in this file header."}
+
+        return web.json_response({"status": "ok", "metadata": metadata})
 
     except Exception as e:
         return web.json_response({"status": "error", "message": str(e)}, status=500)
