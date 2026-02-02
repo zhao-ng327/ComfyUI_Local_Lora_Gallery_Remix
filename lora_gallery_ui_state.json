@@ -14,5 +14,17 @@
     "lora-gallery-qpzxz2ser_31": {
         "is_collapsed": false,
         "lora_stack": []
+    },
+    "lora-gallery-lzjchhmds_146": {
+        "is_collapsed": false,
+        "lora_stack": [
+            {
+                "on": true,
+                "lora": "style\\kanzarinsan.safetensors",
+                "strength": 0.8,
+                "strength_clip": 0.8,
+                "use_trigger": true
+            }
+        ]
     }
 }

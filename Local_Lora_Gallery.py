@@ -10,6 +10,11 @@ import aiohttp
 import asyncio
 from safetensors import safe_open
 from urllib.parse import urlparse
+import shutil
+import base64
+from io import BytesIO
+from PIL import Image
+from urllib.parse import urlparse
 
 NunchakuFluxLoraLoader = None
 NunchakuQwenLoraLoader = None
@@ -306,6 +311,112 @@ async def sync_civitai_metadata(request):
     except Exception as e:
         import traceback
         print(f"Error in sync_civitai_metadata: {traceback.format_exc()}")
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/save_preview")
+async def save_preview(request):
+    try:
+        data = await request.json()
+        lora_name = data.get("lora_name")
+        filename = data.get("filename")
+        subfolder = data.get("subfolder", "")
+        folder_type = data.get("type", "output")
+        if not lora_name:
+            return web.json_response({"status": "error", "message": "Missing lora_name"}, status=400)
+
+        lora_full_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_full_path:
+            return web.json_response({"status": "error", "message": "LoRA file not found"}, status=404)
+
+        lora_dir = os.path.dirname(lora_full_path)
+        lora_basename = os.path.splitext(os.path.basename(lora_full_path))[0]
+        
+        extensions_to_check = ['.png', '.jpg', '.jpeg', '.webp', '.gif']
+        for ext in extensions_to_check:
+            old_preview = os.path.join(lora_dir, lora_basename + ext)
+            if os.path.exists(old_preview):
+                try:
+                    os.remove(old_preview)
+                except Exception as e:
+                    print(f"Failed to remove old preview {old_preview}: {e}")
+        
+        target_path = os.path.join(lora_dir, lora_basename + ".png")
+        
+        if filename:
+            if folder_type == "output":
+                base_dir = folder_paths.get_output_directory()
+            else:
+                base_dir = folder_paths.get_temp_directory()
+                
+            source_path = os.path.join(base_dir, subfolder, filename)
+
+            if source_path and os.path.exists(source_path):
+                try:
+                    img = Image.open(source_path)
+                    from PIL import ImageOps
+                    img = ImageOps.exif_transpose(img) 
+                    img.save(target_path, "PNG")
+                except Exception as e:
+                    print(f"Error processing image with PIL: {e}, trying copy...")
+                    shutil.copy2(source_path, target_path)
+            else:
+                 return web.json_response({"status": "error", "message": f"Source image not found: {source_path}"}, status=404)
+        else:
+             return web.json_response({"status": "error", "message": "No filename provided"}, status=400)
+
+        new_local_url, new_preview_type = get_lora_preview_asset_info(lora_name)
+        
+        return web.json_response({
+            "status": "ok", 
+            "preview_url": new_local_url,
+            "preview_type": new_preview_type
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"Error saving preview: {traceback.format_exc()}")
+        return web.json_response({"status": "error", "message": str(e)}, status=500)
+
+@server.PromptServer.instance.routes.post("/LocalLoraGalleryRemix/delete_preview")
+async def delete_preview(request):
+    try:
+        data = await request.json()
+        lora_name = data.get("lora_name")
+
+        if not lora_name:
+            return web.json_response({"status": "error", "message": "Missing lora_name"}, status=400)
+
+        lora_full_path = folder_paths.get_full_path("loras", lora_name)
+        if not lora_full_path:
+            return web.json_response({"status": "error", "message": "LoRA file not found"}, status=404)
+
+        lora_dir = os.path.dirname(lora_full_path)
+        lora_basename = os.path.splitext(os.path.basename(lora_full_path))[0]
+        
+        extensions_to_check = ['.png', '.jpg', '.jpeg', '.webp', '.gif']
+        deleted_count = 0
+        
+        for ext in extensions_to_check:
+            preview_path = os.path.join(lora_dir, lora_basename + ext)
+            if os.path.exists(preview_path):
+                try:
+                    os.remove(preview_path)
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"Failed to remove preview {preview_path}: {e}")
+
+        new_local_url, new_preview_type = get_lora_preview_asset_info(lora_name)
+        
+        return web.json_response({
+            "status": "ok", 
+            "message": f"Deleted {deleted_count} preview files.",
+            "preview_url": new_local_url,
+            "preview_type": new_preview_type
+        })
+
+    except Exception as e:
+        import traceback
+        print(f"Error deleting preview: {traceback.format_exc()}")
         return web.json_response({"status": "error", "message": str(e)}, status=500)
 
 @server.PromptServer.instance.routes.get("/LocalLoraGalleryRemix/get_presets")

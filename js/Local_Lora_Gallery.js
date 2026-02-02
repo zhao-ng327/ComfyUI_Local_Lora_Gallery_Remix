@@ -265,6 +265,7 @@ const LocalLoraGalleryRemixNode = {
                     </div>
                     <div id="lora-webui-editor-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center;">
                         <div style="background:#1a1a1a; width:80%; max-width:800px; max-height:90vh; border-radius:8px; border:1px solid #444; display:flex; flex-direction:column; color:#ddd;">
+                            
                             <div style="padding:15px; border-bottom:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
                                 <h3 id="modal-lora-name" style="margin:0;">Edit Metadata</h3>
                                 <button id="close-webui-modal" style="background:none; border:none; color:#888; cursor:pointer; font-size:20px;">✖</button>
@@ -316,9 +317,24 @@ const LocalLoraGalleryRemixNode = {
                                     <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Notes</label>
                                     <textarea id="webui-notes" rows="4" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;"></textarea>
                                 </div>
+
+                                <div style="margin-top: 10px; padding-top: 15px; border-top: 1px dashed #333;">
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Preview Image Tool</label>
+                                    <div style="display:flex; align-items:center; gap:10px;">
+                                        <button id="btn-use-selected-node" style="flex:1; background:#333; color:#ccc; border:1px solid #555; padding:8px; border-radius:4px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; gap:5px; transition: background 0.2s;">
+                                            🎯 Use Image from Selected Node
+                                        </button>
+                                        
+                                        <button id="btn-delete-preview" style="width:40px; background:#422; color:#f88; border:1px solid #633; padding:8px; border-radius:4px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;" title="Delete Preview Image">
+                                            🗑️
+                                        </button>
+                                    </div>
+                                    <div id="image-tool-status" style="font-size:11px; color:#888; margin-top:5px; height:15px; text-align: center;"></div>
+                                </div>
+
                             </div>
 
-                            <div style="padding:15px; border-top:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
+                            <div style="padding:15px; border-top:1px solid #333; display:flex; justify-content:space-between; align-items:center; background-color: #1a1a1a; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
                                 <div style="display:flex; gap:5px;">
                                     <button id="webui-sync-meta-btn" style="background:#333; color:#ccc; border:1px solid #555; padding:8px 12px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px;">
                                         ☁️ Data
@@ -529,6 +545,39 @@ const LocalLoraGalleryRemixNode = {
 
                     selectedListEl.appendChild(el);
                 });
+            };
+
+            const sendPreviewRequest = async (card, payload, callback) => {
+                try {
+                    const response = await api.fetchApi("/LocalLoraGalleryRemix/save_preview", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(payload),
+                    });
+                    
+                    const result = await response.json();
+                    if (result.status === 'ok') {
+                        const separator = result.preview_url.includes('?') ? '&' : '?';
+                        const newUrl = `${result.preview_url}${separator}t=${Date.now()}`;
+                        
+                        const lora = this.availableLoras.find(l => l.name === payload.lora_name);
+                        if (lora) {
+                            lora.preview_url = newUrl;
+                            lora.preview_type = 'image';
+                        }
+                        
+                        const mediaContainer = card.querySelector('.locallora-media-container');
+                        if (mediaContainer) {
+                            mediaContainer.innerHTML = `<img src="${newUrl}" style="width:100%; height:100%; object-fit:cover;">`;
+                        }
+                        
+                        if(callback) callback(true, "Success");
+                    } else {
+                        if(callback) callback(false, result.message);
+                    }
+                } catch (e) {
+                    console.error(e);
+                    if(callback) callback(false, "Server Connection Error");
+                }
             };
             
             const syncWithCivitai = async (loraName, card, updateMemory = true, syncImage = true, syncMeta = true) => {
@@ -935,6 +984,100 @@ const LocalLoraGalleryRemixNode = {
                                 alert("Save failed: " + err.message);
                             } finally {
                                 saveBtn.textContent = originalText;
+                            }
+                        };
+
+                        const statusEl = modal.querySelector("#image-tool-status");
+                        const showStatus = (msg, isError=false) => {
+                            statusEl.textContent = msg;
+                            statusEl.style.color = isError ? "#ff6666" : "#4a90e2";
+                            setTimeout(() => statusEl.textContent = "", 3000);
+                        };
+
+                        const btnUseNode = modal.querySelector("#btn-use-selected-node");
+                        btnUseNode.onclick = async () => {
+                            const selectedNodes = app.canvas.selected_nodes;
+                            
+                            if (!selectedNodes || Object.keys(selectedNodes).length === 0) {
+                                showStatus("❌ No node selected. Please click a Preview/Save Image node.", true);
+                                return;
+                            }
+
+                            const nodesArray = Object.values(selectedNodes);
+                            const targetNode = nodesArray[nodesArray.length - 1];
+
+                            if (!app.nodeOutputs || !app.nodeOutputs[targetNode.id]) {
+                                showStatus(`❌ Node #${targetNode.id} has no output data. (Please Queue Prompt first)`, true);
+                                return;
+                            }
+
+                            const output = app.nodeOutputs[targetNode.id];
+                            const images = output.images || output.gifs;
+
+                            if (!images || images.length === 0) {
+                                showStatus(`❌ Selected node has no image output.`, true);
+                                return;
+                            }
+
+                            const imgInfo = images[0]; 
+                            const payload = {
+                                lora_name: loraName,
+                                filename: imgInfo.filename,
+                                subfolder: imgInfo.subfolder,
+                                type: imgInfo.type
+                            };
+
+                            btnUseNode.textContent = "⏳ Saving...";
+                            btnUseNode.disabled = true;
+                            
+                            await sendPreviewRequest(card, payload, (success, msg) => {
+                                btnUseNode.disabled = false;
+                                btnUseNode.innerHTML = "🎯 Use Image from Selected Node";
+                                showStatus(success ? "✅ Preview updated!" : msg, !success);
+                            });
+                        };
+
+                        const btnDeletePreview = modal.querySelector("#btn-delete-preview");
+                        btnDeletePreview.onclick = async () => {
+                            if (!confirm("Are you sure you want to delete the preview image?")) return;
+
+                            const originalText = btnDeletePreview.innerHTML;
+                            btnDeletePreview.textContent = "⏳";
+                            btnDeletePreview.disabled = true;
+
+                            try {
+                                const response = await api.fetchApi("/LocalLoraGalleryRemix/delete_preview", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ lora_name: loraName }),
+                                });
+
+                                const result = await response.json();
+
+                                if (result.status === 'ok') {
+                                    showStatus("✅ Preview deleted.", false);
+                                    
+                                    const empty_lora_image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
+                                    
+                                    const lora = this.availableLoras.find(l => l.name === loraName);
+                                    if (lora) {
+                                        lora.preview_url = result.preview_url || empty_lora_image;
+                                        lora.preview_type = 'none';
+                                    }
+
+                                    const mediaContainer = card.querySelector('.locallora-media-container');
+                                    if (mediaContainer) {
+                                        mediaContainer.innerHTML = `<img src="${lora.preview_url}" style="width:100%; height:100%; object-fit:cover;">`;
+                                    }
+                                } else {
+                                    showStatus("❌ " + result.message, true);
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                showStatus("❌ Error deleting preview.", true);
+                            } finally {
+                                btnDeletePreview.innerHTML = originalText;
+                                btnDeletePreview.disabled = false;
                             }
                         };
 
