@@ -263,6 +263,7 @@ const LocalLoraGalleryRemixNode = {
                         </div>
                         <div class="locallora-gallery"><p>Loading LoRAs...</p></div>
                     </div>
+                    
                     <div id="lora-webui-editor-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:10000; justify-content:center; align-items:center;">
                         <div style="background:#1a1a1a; width:80%; max-width:800px; max-height:90vh; border-radius:8px; border:1px solid #444; display:flex; flex-direction:column; color:#ddd;">
                             
@@ -284,12 +285,10 @@ const LocalLoraGalleryRemixNode = {
                                         </select>
                                     </div>
                                 </div>
-
                                 <div>
                                     <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Activation text</label>
                                     <input type="text" id="webui-activation-text" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;">
                                 </div>
-
                                 <div>
                                     <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Preferred weight</label>
                                     <div style="display:flex; align-items:center; gap:10px;">
@@ -297,22 +296,18 @@ const LocalLoraGalleryRemixNode = {
                                         <span id="webui-weight-label">1.0</span>
                                     </div>
                                 </div>
-
                                 <div>
                                     <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Negative prompt</label>
                                     <input type="text" id="webui-negative-text" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;">
                                 </div>
-
                                 <div>
                                     <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Download URL</label>
                                     <input type="text" id="webui-download-url" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;" placeholder="https://...">
                                 </div>
-
                                 <div>
                                     <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Training dataset tags</label>
                                     <div id="webui-tag-display" style="display:flex; flex-wrap:wrap; gap:5px; background:#0e0e0e; padding:10px; border-radius:4px; min-height:40px;"></div>
                                 </div>
-
                                 <div>
                                     <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Notes</label>
                                     <textarea id="webui-notes" rows="4" style="width:100%; background:#222; color:#ccc; border:1px solid #444; padding:8px; border-radius:4px;"></textarea>
@@ -324,7 +319,6 @@ const LocalLoraGalleryRemixNode = {
                                         <button id="btn-use-selected-node" style="flex:1; background:#333; color:#ccc; border:1px solid #555; padding:8px; border-radius:4px; cursor:pointer; font-size:12px; display:flex; align-items:center; justify-content:center; gap:5px; transition: background 0.2s;">
                                             🎯 Use Image from Selected Node
                                         </button>
-                                        
                                         <button id="btn-delete-preview" style="width:40px; background:#422; color:#f88; border:1px solid #633; padding:8px; border-radius:4px; cursor:pointer; font-size:14px; display:flex; align-items:center; justify-content:center;" title="Delete Preview Image">
                                             🗑️
                                         </button>
@@ -332,18 +326,26 @@ const LocalLoraGalleryRemixNode = {
                                     <div id="image-tool-status" style="font-size:11px; color:#888; margin-top:5px; height:15px; text-align: center;"></div>
                                 </div>
 
+                                <div style="margin-top: 10px; padding-top: 15px; border-top: 1px dashed #333;">
+                                    <label style="display:block; margin-bottom:5px; color:#aaa; font-size:12px;">Civitai Sync Tools</label>
+                                    <div style="display:flex; gap:10px;">
+                                        <button id="webui-sync-url-btn" style="flex:1; background:#333; color:#ccc; border:1px solid #555; padding:8px; border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-size:12px;">
+                                            🔗 URL
+                                        </button>
+                                        <button id="webui-sync-trigger-btn" style="flex:1; background:#333; color:#ccc; border:1px solid #555; padding:8px; border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-size:12px;">
+                                            ⌨️ Trigger
+                                        </button>
+                                        <button id="webui-sync-img-btn" style="flex:1; background:#333; color:#ccc; border:1px solid #555; padding:8px; border-radius:4px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; font-size:12px;">
+                                            🖼️ Image
+                                        </button>
+                                    </div>
+                                    <div id="sync-tool-status" style="font-size:11px; color:#888; margin-top:5px; height:15px; text-align:center;"></div>
+                                </div>
+
                             </div>
 
-                            <div style="padding:15px; border-top:1px solid #333; display:flex; justify-content:space-between; align-items:center; background-color: #1a1a1a; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
-                                <div style="display:flex; gap:5px;">
-                                    <button id="webui-sync-meta-btn" style="background:#333; color:#ccc; border:1px solid #555; padding:8px 12px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px;">
-                                        ☁️ Data
-                                    </button>
-                                    <button id="webui-sync-img-btn" style="background:#333; color:#ccc; border:1px solid #555; padding:8px 12px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px;">
-                                        🖼️ Image
-                                    </button>
-                                </div>
-                                <button id="webui-save-metadata" style="background:#006699; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Save</button>
+                            <div style="padding:15px; border-top:1px solid #333; display:flex; justify-content:flex-end; align-items:center; background-color: #1a1a1a; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px;">
+                                <button id="webui-save-metadata" style="background:#006699; color:white; border:none; padding:8px 30px; border-radius:4px; cursor:pointer; font-weight:bold;">Save Changes</button>
                             </div>
                         </div>
                     </div>
@@ -580,7 +582,7 @@ const LocalLoraGalleryRemixNode = {
                 }
             };
             
-            const syncWithCivitai = async (loraName, card, updateMemory = true, syncImage = true, syncMeta = true) => {
+            const syncWithCivitai = async (loraName, card, updateMemory = true, syncImage = true, syncTrigger = true, syncUrl = true) => {
                 const syncBtn = card.querySelector('.sync-civitai-btn');
                 
                 if (syncBtn) {
@@ -592,7 +594,8 @@ const LocalLoraGalleryRemixNode = {
                     const body = { 
                         lora_name: loraName,
                         sync_image: syncImage,
-                        sync_meta: syncMeta
+                        sync_trigger: syncTrigger,
+                        sync_url: syncUrl
                     };
 
                     const response = await api.fetchApi("/LocalLoraGalleryRemix/sync_civitai", {
@@ -619,10 +622,12 @@ const LocalLoraGalleryRemixNode = {
                                     loraInDataSource.preview_url = preview_url || '';
                                     loraInDataSource.preview_type = preview_type || 'none';
                                 }
-                                if (syncMeta) {
+                                if (syncTrigger) {
                                     loraInDataSource["activation text"] = activationText || '';
+                                    if(tags) loraInDataSource.tags = tags;
+                                }
+                                if (syncUrl) {
                                     loraInDataSource.download_url = download_url || '';
-                                    loraInDataSource.tags = tags || [];
                                 }
                             }
                         }
@@ -639,31 +644,34 @@ const LocalLoraGalleryRemixNode = {
                             }
                         }
 
-                        if (updateMemory && syncMeta) {
-                            const triggerEl = card.querySelector('.lora-card-triggers');
-                            if(triggerEl) {
-                               triggerEl.textContent = activationText || 'No triggers';
-                               triggerEl.title = activationText || '';
+                        if (updateMemory) {
+                            if (syncTrigger) {
+                                const triggerEl = card.querySelector('.lora-card-triggers');
+                                if(triggerEl) {
+                                   triggerEl.textContent = activationText || 'No triggers';
+                                   triggerEl.title = activationText || '';
+                                }
+                                card.dataset.activationText = activationText || '';
+                                card.dataset.tags = (tags || []).join(',');
+                                renderCardTags(card);
+                                await loadAllTags();
                             }
-                            card.dataset.activationText = activationText || '';
-                            card.dataset.downloadUrl = download_url || '';
-                            card.dataset.tags = (tags || []).join(',');
-                            
-                            const oldLinkBtn = card.querySelector('.lora-card-link-btn');
-                            if(oldLinkBtn) oldLinkBtn.remove();
-                            if(download_url){
-                                const linkBtn = document.createElement('a');
-                                linkBtn.href = download_url;
-                                linkBtn.target = '_blank';
-                                linkBtn.className = 'card-btn lora-card-link-btn';
-                                linkBtn.title = 'Open download page';
-                                linkBtn.innerHTML = '🔗';
-                                linkBtn.addEventListener('click', e => e.stopPropagation());
-                                card.prepend(linkBtn);
+
+                            if (syncUrl) {
+                                card.dataset.downloadUrl = download_url || '';
+                                const oldLinkBtn = card.querySelector('.lora-card-link-btn');
+                                if(oldLinkBtn) oldLinkBtn.remove();
+                                if(download_url){
+                                    const linkBtn = document.createElement('a');
+                                    linkBtn.href = download_url;
+                                    linkBtn.target = '_blank';
+                                    linkBtn.className = 'card-btn lora-card-link-btn';
+                                    linkBtn.title = 'Open download page';
+                                    linkBtn.innerHTML = '🔗';
+                                    linkBtn.addEventListener('click', e => e.stopPropagation());
+                                    card.prepend(linkBtn);
+                                }
                             }
-                            
-                            renderCardTags(card);
-                            await loadAllTags();
                         }
 
                         return result.metadata;
@@ -1081,24 +1089,42 @@ const LocalLoraGalleryRemixNode = {
                             }
                         };
 
-                        const modalSyncBtn = modal.querySelector("#webui-sync-meta-btn");
-                        modalSyncBtn.onclick = async () => {
-                            const originalText = modalSyncBtn.innerHTML;
-                            modalSyncBtn.textContent = "Syncing...";
-                            modalSyncBtn.disabled = true;
+                        const syncStatusEl = modal.querySelector("#sync-tool-status");
+                        const showSyncStatus = (msg, isError=false) => {
+                            syncStatusEl.textContent = msg;
+                            syncStatusEl.style.color = isError ? "#ff6666" : "#4a90e2";
+                            setTimeout(() => syncStatusEl.textContent = "", 3000);
+                        };
 
+                        const btnSyncUrl = modal.querySelector("#webui-sync-url-btn");
+                        btnSyncUrl.onclick = async () => {
+                            const originalText = btnSyncUrl.innerHTML;
+                            btnSyncUrl.textContent = "⏳";
+                            btnSyncUrl.disabled = true;
                             try {
-                                const freshData = await syncWithCivitai(loraName, card, false);
+                                const freshData = await syncWithCivitai(loraName, card, false, false, false, true);
+                                if (freshData && freshData.download_url) {
+                                    if(downloadUrlInput) downloadUrlInput.value = freshData.download_url;
+                                    showSyncStatus("✅ URL updated");
+                                } else {
+                                    showSyncStatus("⚠️ No URL found", true);
+                                }
+                            } catch (e) { showSyncStatus("❌ Error", true); }
+                            finally { btnSyncUrl.innerHTML = originalText; btnSyncUrl.disabled = false; }
+                        };
 
+                        const btnSyncTrigger = modal.querySelector("#webui-sync-trigger-btn");
+                        btnSyncTrigger.onclick = async () => {
+                            const originalText = btnSyncTrigger.innerHTML;
+                            btnSyncTrigger.textContent = "⏳";
+                            btnSyncTrigger.disabled = true;
+                            try {
+                                const freshData = await syncWithCivitai(loraName, card, false, false, true, false);
                                 if (freshData) {
                                     if (freshData["activation text"]) {
                                         if(activationInput) activationInput.value = freshData["activation text"];
+                                        showSyncStatus("✅ Triggers updated");
                                     }
-
-                                    if (freshData.download_url) {
-                                        if(downloadUrlInput) downloadUrlInput.value = freshData.download_url;
-                                    }
-
                                     if (freshData.tags && freshData.tags.length > 0) {
                                         tagDisplay.innerHTML = "";
                                         freshData.tags.forEach(tag => {
@@ -1110,38 +1136,20 @@ const LocalLoraGalleryRemixNode = {
                                         });
                                     }
                                 }
-                                
-                                modalSyncBtn.textContent = "✅ Done";
-                            } catch (e) {
-                                modalSyncBtn.textContent = "❌ Failed";
-                                alert("Sync Meta failed: " + e.message);
-                            } finally {
-                                setTimeout(() => {
-                                    modalSyncBtn.innerHTML = originalText;
-                                    modalSyncBtn.disabled = false;
-                                }, 1500);
-                            }
+                            } catch (e) { showSyncStatus("❌ Error", true); }
+                            finally { btnSyncTrigger.innerHTML = originalText; btnSyncTrigger.disabled = false; }
                         };
 
-                        const modalSyncImgBtn = modal.querySelector("#webui-sync-img-btn");
-                        modalSyncImgBtn.onclick = async () => {
-                            const originalText = modalSyncImgBtn.innerHTML;
-                            modalSyncImgBtn.textContent = "Dl Image...";
-                            modalSyncImgBtn.disabled = true;
-
+                        const btnSyncImg = modal.querySelector("#webui-sync-img-btn");
+                        btnSyncImg.onclick = async () => {
+                            const originalText = btnSyncImg.innerHTML;
+                            btnSyncImg.textContent = "⏳";
+                            btnSyncImg.disabled = true;
                             try {
-                                await syncWithCivitai(loraName, card, false, true, false);
-                                
-                                modalSyncImgBtn.textContent = "✅ Done";
-                            } catch (e) {
-                                modalSyncImgBtn.textContent = "❌ Failed";
-                                alert("Sync Image failed: " + e.message);
-                            } finally {
-                                setTimeout(() => {
-                                    modalSyncImgBtn.innerHTML = originalText;
-                                    modalSyncImgBtn.disabled = false;
-                                }, 1500);
-                            }
+                                await syncWithCivitai(loraName, card, false, true, false, false);
+                                showSyncStatus("✅ Image updated");
+                            } catch (e) { showSyncStatus("❌ Error", true); }
+                            finally { btnSyncImg.innerHTML = originalText; btnSyncImg.disabled = false; }
                         };
                     });
                 });

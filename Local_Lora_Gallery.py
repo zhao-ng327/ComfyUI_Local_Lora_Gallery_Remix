@@ -207,7 +207,8 @@ async def sync_civitai_metadata(request):
         lora_name = data.get("lora_name")
 
         do_sync_image = data.get("sync_image", True)
-        do_sync_meta = data.get("sync_meta", True)
+        do_sync_trigger = data.get("sync_trigger", True) 
+        do_sync_url = data.get("sync_url", True)  
 
         if not lora_name:
             return web.json_response({"status": "error", "message": "Missing lora_name"}, status=400)
@@ -217,7 +218,7 @@ async def sync_civitai_metadata(request):
             return web.json_response({"status": "error", "message": "LoRA file not found"}, status=404)
 
         lora_meta = load_lora_metadata(lora_name)
-        
+
         model_hash = lora_meta.get('hash')
         if not model_hash:
             print(f"Local Lora Gallery: Calculating hash for {lora_name}...")
@@ -232,18 +233,14 @@ async def sync_civitai_metadata(request):
         async with aiohttp.ClientSession() as session:
             async with session.get(civitai_version_url) as response:
                 if response.status != 200:
-                    return web.json_response({"status": "error", "message": f"Civitai API (version) returned {response.status}. Model not found or API error."}, status=response.status)
+                    return web.json_response({"status": "error", "message": f"Civitai API returned {response.status}. Model not found."}, status=response.status)
                 
                 civitai_version_data = await response.json()
                 model_id = civitai_version_data.get('modelId')
-                if not model_id:
-                    return web.json_response({"status": "error", "message": "Could not find modelId in Civitai API response."}, status=500)
 
             if do_sync_image:
                 images = civitai_version_data.get('images', [])
-                if not images:
-                    print("Local Lora Gallery: No preview images found on Civitai.")
-                else:
+                if images:
                     preview_media = next((img for img in images if img.get('type') == 'image'), images[0])
                     preview_url = preview_media.get('url')
                     is_video = preview_media.get('type') == 'video'
@@ -270,10 +267,10 @@ async def sync_civitai_metadata(request):
                             path = urlparse(final_url).path
                             file_ext = os.path.splitext(path)[1]
                             if not file_ext or file_ext.lower() not in IMAGE_EXTENSIONS:
-                                file_ext = '.png'
+                                file_ext = '.jpg'
                     except Exception as e:
                         final_url = preview_url
-                        file_ext = '.png' if not is_video else '.mp4'
+                        file_ext = '.jpg' if not is_video else '.mp4'
 
                     lora_dir = os.path.dirname(lora_full_path)
                     lora_basename = os.path.splitext(os.path.basename(lora_full_path))[0]
@@ -288,14 +285,16 @@ async def sync_civitai_metadata(request):
                                     f.write(chunk)
 
             new_meta_data = {}
-            if do_sync_meta:
+            
+            if do_sync_trigger:
                 trained_words = civitai_version_data.get('trainedWords', [])
                 if trained_words:
                     new_meta_data['activation text'] = ", ".join(trained_words)
-                
+            
+            if do_sync_url and model_id:
                 new_meta_data['download_url'] = f"https://civitai.com/models/{model_id}"
-                
-                lora_meta.update(new_meta_data)
+
+            lora_meta.update(new_meta_data)
             
             new_local_url, new_preview_type = get_lora_preview_asset_info(lora_name)
             
@@ -304,7 +303,7 @@ async def sync_civitai_metadata(request):
                 "metadata": { 
                     "preview_url": new_local_url, 
                     "preview_type": new_preview_type, 
-                    **new_meta_data
+                    **new_meta_data 
                 }
             })
 
