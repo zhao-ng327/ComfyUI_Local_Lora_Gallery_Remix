@@ -42,7 +42,7 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 ### ⭐️ Differences Between This Fork and the Original Node
 
  * **Improved Editing Interface**: Features a UI similar to A1111, allowing users to save preset weights, positive/negative prompts, and more.
- <img width="484" height="595" alt="image" src="https://github.com/user-attachments/assets/bba118fb-8e4c-434e-975d-3e7a5503e3ce" />
+<img width="469" height="790" alt="image" src="https://github.com/user-attachments/assets/a8d59386-bb73-493a-80cd-2ebd73f7cc0f" />
  
 * **A1111 Metadata Compatibility**: Files created using A1111 are automatically detected and read, eliminating the need for manual imports.
 
@@ -110,8 +110,8 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 ### ⭐️ 此Fork與原節點差別
 
  * **更好的編輯介面**: 使用與A1111相似的編輯介面，可儲存預設權重、正負提示詞等
- <img width="484" height="595" alt="image" src="https://github.com/user-attachments/assets/bba118fb-8e4c-434e-975d-3e7a5503e3ce" />
- 
+<img width="469" height="790" alt="image" src="https://github.com/user-attachments/assets/0e9f0dd7-5cea-44cb-8f26-60c781f1b9df" />
+
 * **兼容A1111 metadata**: 使用A1111時建立的檔案可自動被讀取，不用手動匯入
 
 ### 💾 安装说明
