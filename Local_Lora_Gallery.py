@@ -216,8 +216,7 @@ async def sync_civitai_metadata(request):
             model_hash = calculate_sha256(lora_full_path)
             if model_hash:
                 lora_meta['hash'] = model_hash
-                metadata[lora_name] = lora_meta
-                save_metadata(metadata)
+                save_lora_metadata(lora_name, {'hash': model_hash}, merge=True)
             else:
                  return web.json_response({"status": "error", "message": "Failed to calculate hash"}, status=500)
 
@@ -305,7 +304,7 @@ async def sync_civitai_metadata(request):
             
             #metadata[lora_name] = lora_meta
             #save_metadata(metadata)
-            save_lora_metadata(lora_name, lora_meta)
+            #save_lora_metadata(lora_name, lora_meta)
             
             new_local_url, new_preview_type = get_lora_preview_asset_info(lora_name)
             
