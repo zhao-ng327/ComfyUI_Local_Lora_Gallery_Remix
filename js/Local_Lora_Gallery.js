@@ -319,10 +319,14 @@ const LocalLoraGalleryRemixNode = {
                             </div>
 
                             <div style="padding:15px; border-top:1px solid #333; display:flex; justify-content:space-between; align-items:center;">
-                                <button id="webui-sync-btn" style="background:#333; color:#ccc; border:1px solid #555; padding:8px 15px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:5px;">
-                                    ☁️ Sync Civitai
-                                </button>
-
+                                <div style="display:flex; gap:5px;">
+                                    <button id="webui-sync-meta-btn" style="background:#333; color:#ccc; border:1px solid #555; padding:8px 12px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px;">
+                                        ☁️ Data
+                                    </button>
+                                    <button id="webui-sync-img-btn" style="background:#333; color:#ccc; border:1px solid #555; padding:8px 12px; border-radius:4px; cursor:pointer; display:flex; align-items:center; gap:5px; font-size:12px;">
+                                        🖼️ Image
+                                    </button>
+                                </div>
                                 <button id="webui-save-metadata" style="background:#006699; color:white; border:none; padding:8px 20px; border-radius:4px; cursor:pointer;">Save</button>
                             </div>
                         </div>
@@ -501,18 +505,25 @@ const LocalLoraGalleryRemixNode = {
                 });
             };
             
-            const syncWithCivitai = async (loraName, card, updateMemory = true) => {
+            const syncWithCivitai = async (loraName, card, updateMemory = true, syncImage = true, syncMeta = true) => {
                 const syncBtn = card.querySelector('.sync-civitai-btn');
+                
                 if (syncBtn) {
                     syncBtn.textContent = '🔄';
                     syncBtn.classList.add('loading');
                 }
             
                 try {
+                    const body = { 
+                        lora_name: loraName,
+                        sync_image: syncImage,
+                        sync_meta: syncMeta
+                    };
+
                     const response = await api.fetchApi("/LocalLoraGalleryRemix/sync_civitai", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ lora_name: loraName }),
+                        body: JSON.stringify(body),
                     });
             
                     if (!response.ok) {
@@ -529,28 +540,31 @@ const LocalLoraGalleryRemixNode = {
                         if (updateMemory) {
                             const loraInDataSource = this.availableLoras.find(l => l.name === loraName);
                             if (loraInDataSource) {
-                                loraInDataSource.preview_url = preview_url || '';
-                                loraInDataSource.preview_type = preview_type || 'none';
-                                loraInDataSource["activation text"] = activationText || '';
-                                loraInDataSource.download_url = download_url || '';
-                                loraInDataSource.tags = tags || [];
+                                if (syncImage && preview_url) {
+                                    loraInDataSource.preview_url = preview_url || '';
+                                    loraInDataSource.preview_type = preview_type || 'none';
+                                }
+                                if (syncMeta) {
+                                    loraInDataSource["activation text"] = activationText || '';
+                                    loraInDataSource.download_url = download_url || '';
+                                    loraInDataSource.tags = tags || [];
+                                }
                             }
                         }
                         
-                        const mediaContainer = card.querySelector('.locallora-media-container');
-                        if (preview_type === 'video' && preview_url) {
-                            mediaContainer.innerHTML = `<video muted loop playsinline src="${preview_url}"></video>`;
-                            const video = mediaContainer.querySelector('video');
-                            card.addEventListener('mouseenter', () => video.play().catch(e => {}));
-                            card.addEventListener('mouseleave', () => { video.pause(); video.currentTime = 0; });
-                        } else if (preview_type === 'image' && preview_url) {
-                            mediaContainer.innerHTML = `<img src="${preview_url}">`;
-                        } else {
-                            const empty_lora_image = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-                            mediaContainer.innerHTML = `<img src="${empty_lora_image}">`;
+                        if (syncImage && preview_url) {
+                            const mediaContainer = card.querySelector('.locallora-media-container');
+                            if (preview_type === 'video') {
+                                mediaContainer.innerHTML = `<video muted loop playsinline src="${preview_url}"></video>`;
+                                const video = mediaContainer.querySelector('video');
+                                card.addEventListener('mouseenter', () => video.play().catch(e => {}));
+                                card.addEventListener('mouseleave', () => { video.pause(); video.currentTime = 0; });
+                            } else {
+                                mediaContainer.innerHTML = `<img src="${preview_url}">`;
+                            }
                         }
 
-                        if (updateMemory) {
+                        if (updateMemory && syncMeta) {
                             const triggerEl = card.querySelector('.lora-card-triggers');
                             if(triggerEl) {
                                triggerEl.textContent = activationText || 'No triggers';
@@ -572,6 +586,7 @@ const LocalLoraGalleryRemixNode = {
                                 linkBtn.addEventListener('click', e => e.stopPropagation());
                                 card.prepend(linkBtn);
                             }
+                            
                             renderCardTags(card);
                             await loadAllTags();
                         }
@@ -582,13 +597,14 @@ const LocalLoraGalleryRemixNode = {
                     }
             
                 } catch (error) {
-                    console.error("LocalLoraGalleryRemix: Failed to sync with Civitai:", error);
+                    console.error("LocalLoraGalleryRemix: Failed to sync:", error);
                     if (syncBtn) {
                         syncBtn.textContent = '❌';
                         setTimeout(() => syncBtn.textContent = '☁️', 2000);
                     }
+                    throw error; 
                 } finally {
-                    if (syncBtn) { 
+                    if (syncBtn) {
                         syncBtn.classList.remove('loading');
                         if(syncBtn.textContent !== '❌') syncBtn.textContent = '☁️';
                     }
@@ -827,7 +843,7 @@ const LocalLoraGalleryRemixNode = {
                             }
                         };
 
-                        const modalSyncBtn = modal.querySelector("#webui-sync-btn");
+                        const modalSyncBtn = modal.querySelector("#webui-sync-meta-btn");
                         modalSyncBtn.onclick = async () => {
                             const originalText = modalSyncBtn.innerHTML;
                             modalSyncBtn.textContent = "Syncing...";
@@ -860,11 +876,32 @@ const LocalLoraGalleryRemixNode = {
                                 modalSyncBtn.textContent = "✅ Done";
                             } catch (e) {
                                 modalSyncBtn.textContent = "❌ Failed";
-                                alert("Sync failed: " + e.message);
+                                alert("Sync Meta failed: " + e.message);
                             } finally {
                                 setTimeout(() => {
                                     modalSyncBtn.innerHTML = originalText;
                                     modalSyncBtn.disabled = false;
+                                }, 1500);
+                            }
+                        };
+
+                        const modalSyncImgBtn = modal.querySelector("#webui-sync-img-btn");
+                        modalSyncImgBtn.onclick = async () => {
+                            const originalText = modalSyncImgBtn.innerHTML;
+                            modalSyncImgBtn.textContent = "Dl Image...";
+                            modalSyncImgBtn.disabled = true;
+
+                            try {
+                                await syncWithCivitai(loraName, card, false, true, false);
+                                
+                                modalSyncImgBtn.textContent = "✅ Done";
+                            } catch (e) {
+                                modalSyncImgBtn.textContent = "❌ Failed";
+                                alert("Sync Image failed: " + e.message);
+                            } finally {
+                                setTimeout(() => {
+                                    modalSyncImgBtn.innerHTML = originalText;
+                                    modalSyncImgBtn.disabled = false;
                                 }, 1500);
                             }
                         };

@@ -199,6 +199,10 @@ async def sync_civitai_metadata(request):
     try:
         data = await request.json()
         lora_name = data.get("lora_name")
+
+        do_sync_image = data.get("sync_image", True)
+        do_sync_meta = data.get("sync_meta", True)
+
         if not lora_name:
             return web.json_response({"status": "error", "message": "Missing lora_name"}, status=400)
 
@@ -206,8 +210,6 @@ async def sync_civitai_metadata(request):
         if not lora_full_path:
             return web.json_response({"status": "error", "message": "LoRA file not found"}, status=404)
 
-        #metadata = load_metadata()
-        #lora_meta = metadata.get(lora_name, {})
         lora_meta = load_lora_metadata(lora_name)
         
         model_hash = lora_meta.get('hash')
@@ -231,86 +233,73 @@ async def sync_civitai_metadata(request):
                 if not model_id:
                     return web.json_response({"status": "error", "message": "Could not find modelId in Civitai API response."}, status=500)
 
-            # civitai_model_url = f"https://civitai.com/api/v1/models/{model_id}"
-            # async with session.get(civitai_model_url) as response:
-            #     if response.status != 200:
-            #         print(f"Local Lora Gallery: Warning - Could not fetch model details for tags. Status: {response.status}")
-            #         civitai_model_data = {}
-            #     else:
-            #         civitai_model_data = await response.json()
+            if do_sync_image:
+                images = civitai_version_data.get('images', [])
+                if not images:
+                    print("Local Lora Gallery: No preview images found on Civitai.")
+                else:
+                    preview_media = next((img for img in images if img.get('type') == 'image'), images[0])
+                    preview_url = preview_media.get('url')
+                    is_video = preview_media.get('type') == 'video'
 
-            images = civitai_version_data.get('images', [])
-            if not images:
-                print("Local Lora Gallery: No preview images found on Civitai, but will save other metadata.")
-            else:
-                preview_media = next((img for img in images if img.get('type') == 'image'), images[0])
-                preview_url = preview_media.get('url')
-                is_video = preview_media.get('type') == 'video'
-
-                try:
-                    if is_video:
-                        if '/original=true/' in preview_url:
-                            temp_url = preview_url.replace('/original=true/', '/transcode=true,width=450,optimized=true/')
-                            final_url = os.path.splitext(temp_url)[0] + '.webm'
+                    try:
+                        if is_video:
+                            if '/original=true/' in preview_url:
+                                temp_url = preview_url.replace('/original=true/', '/transcode=true,width=450,optimized=true/')
+                                final_url = os.path.splitext(temp_url)[0] + '.webm'
+                            else:
+                                url_obj = urlparse(preview_url)
+                                path_parts = url_obj.path.split('/')
+                                filename = path_parts.pop()
+                                filename_base = os.path.splitext(filename)[0]
+                                new_path = f"{'/'.join(path_parts)}/transcode=true,width=450,optimized=true/{filename_base}.webm"
+                                final_url = url_obj._replace(path=new_path).geturl()
+                            file_ext = '.webm'
                         else:
-                            url_obj = urlparse(preview_url)
-                            path_parts = url_obj.path.split('/')
-                            filename = path_parts.pop()
-                            filename_base = os.path.splitext(filename)[0]
-                            new_path = f"{'/'.join(path_parts)}/transcode=true,width=450,optimized=true/{filename_base}.webm"
-                            final_url = url_obj._replace(path=new_path).geturl()
-                        file_ext = '.webm'
-                    else:
-                        if '/original=true/' in preview_url:
-                           final_url = preview_url.replace('/original=true/', '/width=450/')
-                        else:
-                            final_url = preview_url.replace('/width=\d+/', '/width=450/') if '/width=' in preview_url else preview_url.replace(urlparse(preview_url).path, f"/width=450{urlparse(preview_url).path}")
+                            if '/original=true/' in preview_url:
+                               final_url = preview_url.replace('/original=true/', '/width=450/')
+                            else:
+                                final_url = preview_url.replace('/width=\d+/', '/width=450/') if '/width=' in preview_url else preview_url.replace(urlparse(preview_url).path, f"/width=450{urlparse(preview_url).path}")
 
-                        path = urlparse(final_url).path
-                        file_ext = os.path.splitext(path)[1]
-                        if not file_ext or file_ext.lower() not in IMAGE_EXTENSIONS:
-                            file_ext = '.jpg'
-                except Exception as e:
-                    print(f"Local Lora Gallery: Failed to parse or modify URL '{preview_url}'. Error: {e}")
-                    final_url = preview_url
-                    file_ext = '.jpg' if not is_video else '.mp4'
+                            path = urlparse(final_url).path
+                            file_ext = os.path.splitext(path)[1]
+                            if not file_ext or file_ext.lower() not in IMAGE_EXTENSIONS:
+                                file_ext = '.png'
+                    except Exception as e:
+                        final_url = preview_url
+                        file_ext = '.png' if not is_video else '.mp4'
 
-                lora_dir = os.path.dirname(lora_full_path)
-                lora_basename = os.path.splitext(os.path.basename(lora_full_path))[0]
-                save_path = os.path.join(lora_dir, lora_basename + file_ext)
+                    lora_dir = os.path.dirname(lora_full_path)
+                    lora_basename = os.path.splitext(os.path.basename(lora_full_path))[0]
+                    save_path = os.path.join(lora_dir, lora_basename + file_ext)
 
-                async with session.get(final_url) as download_response:
-                    if download_response.status != 200:
-                        print(f"Local Lora Gallery: Warning - Failed to download preview from {final_url}. Proceeding without preview.")
-                    else:
-                        with open(save_path, 'wb') as f:
-                            while True:
-                                chunk = await download_response.content.read(8192)
-                                if not chunk: break
-                                f.write(chunk)
-                        print(f"Local Lora Gallery: Successfully downloaded preview to '{save_path}'")
+                    async with session.get(final_url) as download_response:
+                        if download_response.status == 200:
+                            with open(save_path, 'wb') as f:
+                                while True:
+                                    chunk = await download_response.content.read(8192)
+                                    if not chunk: break
+                                    f.write(chunk)
 
-            trained_words = civitai_version_data.get('trainedWords', [])
-            if trained_words:
-                lora_meta['activation text'] = ", ".join(trained_words)
-            
-            lora_meta['download_url'] = f"https://civitai.com/models/{model_id}"
-
-            # tags = set(lora_meta.get('tags', []))
-            # if 'tags' in civitai_model_data:
-            #     for tag in civitai_model_data['tags']:
-            #         tags.add(tag)
-            # lora_meta['tags'] = sorted(list(tags))
-            
-            #metadata[lora_name] = lora_meta
-            #save_metadata(metadata)
-            #save_lora_metadata(lora_name, lora_meta)
+            new_meta_data = {}
+            if do_sync_meta:
+                trained_words = civitai_version_data.get('trainedWords', [])
+                if trained_words:
+                    new_meta_data['activation text'] = ", ".join(trained_words)
+                
+                new_meta_data['download_url'] = f"https://civitai.com/models/{model_id}"
+                
+                lora_meta.update(new_meta_data)
             
             new_local_url, new_preview_type = get_lora_preview_asset_info(lora_name)
             
             return web.json_response({
                 "status": "ok", 
-                "metadata": { "preview_url": new_local_url, "preview_type": new_preview_type, **lora_meta }
+                "metadata": { 
+                    "preview_url": new_local_url, 
+                    "preview_type": new_preview_type, 
+                    **new_meta_data
+                }
             })
 
     except Exception as e:
