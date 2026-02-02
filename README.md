@@ -1,6 +1,6 @@
 <div align="center">
 
-# ComfyUI Local LoRA Gallery
+# ComfyUI Local LoRA Gallery Remix
 
 ### A custom node for ComfyUI that provides a visual gallery for managing and applying multiple LoRA models.
 
@@ -13,42 +13,6 @@
 ---
 
 ## 🇬🇧 English
-### Changelog (2025-10-21)
-* **[Recent Updates]**:
-    * Nunchaku Qwen LoRA Support (Early Access)Important Note: This feature currently depends on a specific early access version of the ComfyUI-nunchaku plugin.To enable this support, you must perform the following steps:
-    * Update the Nunchaku Core Library (v1.0.1):
-    Visit the Releases page of the Nunchaku plugin.
-    Download the latest .whl file (e.g., nunchaku-1.0.1+torch2.7-cp311-cp311-win_amd64.whl) and install it.
-    * Update the Nunchaku ComfyUI Plugin:
-    Since support for Qwen LoRA has been added in early access, you need to reinstall or update the ComfyUI-nunchaku plugin itself:
-    In the custom_nodes folder of ComfyUI, delete the old ComfyUI-nunchaku folder.
-    Re-clone the plugin using the following URL:
-    git clone https://github.com/Firetheft/ComfyUI-nunchaku.git
-    After completing the above steps, the Local Lora Gallery node will automatically detect the Nunchaku Qwen Image model and call NunchakuQwenImageLoraLoader to load the LoRA.Lastly, this step is not mandatory if you do not need to use Nunchaku Qwen LoRA.
-
-### Update Log (2025-10-02)
-* **Civitai Metadata Sync & Preview Downloader**:
-    * Added a "Sync with Civitai" (☁️) button to each LoRA card. This feature calculates the model's hash to fetch metadata like trigger words and homepage URLs from Civitai.
-    * When syncing, the plugin automatically downloads a small, web-optimized preview (image or video, 450px wide) and saves it locally alongside your LoRA file. This ensures fast, offline access to previews after the initial sync.
-
-### Changelog (2025-09-12)
-* **Preset Management**: You can now save your favorite LoRA stacks as presets and load them with a single click.
-* **Folder Filtering**: A new dropdown menu allows you to filter LoRAs by their subfolder, making it easier to manage large collections.
-* **Drag-and-Drop Sorting**: The selected LoRAs in the stack can now be easily reordered by dragging and dropping them.
-* **Performance Optimization**: The gallery now uses lazy loading to load LoRA cards dynamically as you scroll, significantly improving performance and reducing initial load times.
-
-### Changelog (2025-09-02)
-* **Optimized Unique ID**: Each gallery node now automatically generates and stores its own unique ID, which is synchronized with the workflow. This completely avoids conflicts between different workflows or nodes.
-
-### Changelog (2025-08-31)
-* **Multi-Select Dropdown**: The previous tag filter has been upgraded to a full-featured multi-select dropdown menu, allowing you to combine multiple tags by checking them.
-
-### Changelog (2025-08-30)
-* **Trigger Word Editor**: You can now add, edit, and save trigger words for each LoRA directly within the editor panel (when a single card is selected).
-* **Download URL**: A new field allows you to save a source/download URL for each LoRA. A link icon (🔗) will appear on the card, allowing you to open the URL in a new browser tab.
-* **Trigger Word Output**: A new trigger_words text output has been added to the node. It automatically concatenates the trigger words of all active LoRAs in the stack, ready to be connected to your prompt nodes.
-
----
 
 ### Overview
 
@@ -74,6 +38,13 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
       * When a Nunchaku-compatible model (e.g., FLUX) is connected, it transparently uses the accelerated `NunchakuFluxLoraLoader` for faster performance.
       * Falls back to the standard loader for non-Nunchaku models, ensuring full compatibility.
   * **User-Friendly Interface**: Collapsible gallery view to save screen space.
+
+### ⭐️ Differences Between This Fork and the Original Node
+
+ * **Improved Editing Interface**: Features a UI similar to A1111, allowing users to save preset weights, positive/negative prompts, and more.
+ <img width="484" height="595" alt="image" src="https://github.com/user-attachments/assets/bba118fb-8e4c-434e-975d-3e7a5503e3ce" />
+ 
+* **A1111 Metadata Compatibility**: Files created using A1111 are automatically detected and read, eliminating the need for manual imports.
 
 ### 💾 Installation
 
@@ -110,44 +81,6 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
 -----
 
 ## 🇨🇳 中文
-### 更新日志 (2025-10-21)
-* **[近期更新]**:
-    * 双截棍（Nunchaku）Qwen LoRA 支持（先行体验版）
-    重要提示：此功能目前依赖 ComfyUI-nunchaku 插件的特定先行体验版本。若需启用该支持，需执行以下步骤：
-    * 更新双截棍（Nunchaku）核心库（v1.0.1）：
-    访问双截棍（Nunchaku）插件的 Releases 页面。
-    下载最新的 .whl 文件（例如：nunchaku-1.0.1+torch2.7-cp311-cp311-win_amd64.whl）并进行安装。
-    * 更新双截棍（Nunchaku）ComfyUI 插件：
-    由于 Qwen LoRA 支持为新增的先行体验功能，您需重新安装或更新 ComfyUI-nunchaku 插件本体：
-    在 ComfyUI 的 custom_nodes 文件夹中，删除旧的 ComfyUI-nunchaku 文件夹。
-    使用以下链接重新克隆该插件：
-    git clone https://github.com/Firetheft/ComfyUI-nunchaku.git
-    完成上述步骤后，Local Lora Gallery（本地 LoRA 图库）节点将自动检测到双截棍（Nunchaku）Qwen 图像模型，并调用 NunchakuQwenImageLoraLoader 加载 LoRA。
-    最后说明：若您无需使用双截棍（Nunchaku）Qwen LoRA，则上述步骤非必需操作。
-
-### 更新日志 (2025-10-02)
-* **Civitai 元数据同步与预览图下载**:
-    * 在每个 LoRA 卡片上增加了一个“与Civitai同步”(☁️) 按钮。此功能会计算模型哈希值，以从 Civitai 获取触发词和主页URL等元数据。
-    * 同步时，插件会自动下载一个经网络优化的预览图（450px宽的图片或视频），并将其保存在您的 LoRA 文件旁边。这确保了在初次同步后，您可以在本地快速、离线地访问预览图。
-
-### 更新日志 (2025-09-12)
-* **预设管理**: 现在您可以将常用的 LoRA 堆栈保存为预设，并一键加载。
-* **文件夹筛选**: 新增了文件夹筛选下拉菜单，可以按子文件夹显示 LoRA，便于管理庞大的模型库。
-* **拖拽排序**: 现在可以通过拖拽轻松调整已选 LoRA 在堆栈中的应用顺序。
-* **性能优化**: 画廊现在采用懒加载技术，滚动时动态加载 LoRA 卡片，显著提升了性能和初次加载速度。
-
-### 更新日志 (2025-09-02)
-* **优化唯一 ID**：每个图库节点现在都会自动生成并保存其专属的唯一 ID，并与工作流程同步。这完全避免了不同工作流程或节点之间的冲突。
-
-### 更新日志 (2025-08-31)
-* **多选下拉菜单**: 原有的标签筛选器已升级为功能完善的多选下拉菜单，允许您通过勾选来组合多个标签进行筛选。
-
-### 更新日志 (2025-08-30)
-* **触发词编辑器**: 现在您可以直接在编辑面板中为每个LoRA添加、编辑和保存触发词（当选中单个卡片时）。
-* **下载地址**: 新增了一个输入框，用于为每个LoRA保存其来源或下载URL。卡片右上角会出现一个链接图标（🔗），点击即可在新标签页中打开该网址。
-* **触发词输出**: 节点增加了一个新的 trigger_words 文本输出端口。它会自动拼接当前堆栈中所有已启用LoRA的触发词，可以直接连接到您的提示词节点。
-
----
 
 ### 概述
 
@@ -173,6 +106,13 @@ It also features optional integration with **[comfyui-nunchaku](https://github.c
       * 当连接了与Nunchaku兼容的模型（例如FLUX）时，它会自动使用加速的 `NunchakuFluxLoraLoader` 以获得更快的性能。
       * 对于非Nunchaku模型，它会回退到标准加载器，确保完全兼容。
   * **友好的界面**: 画廊视图可折叠，以节省屏幕空间。
+
+### ⭐️ 此Fork與原節點差別
+
+ * **更好的編輯介面**: 使用與A1111相似的編輯介面，可儲存預設權重、正負提示詞等
+ <img width="484" height="595" alt="image" src="https://github.com/user-attachments/assets/bba118fb-8e4c-434e-975d-3e7a5503e3ce" />
+ 
+* **兼容A1111 metadata**: 使用A1111時建立的檔案可自動被讀取，不用手動匯入
 
 ### 💾 安装说明
 
